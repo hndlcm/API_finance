@@ -22,7 +22,7 @@ worksheet = spreadsheet.worksheet("Аркуш1")
 load_dotenv()
 api_key = os.getenv("ETHER")
 
-address = "0x505588c9ff1160110B92d615A0C1CF51Ed5aDaf9"  # Ваша адреса
+address = "0x19Cf249E7e423b5Bd2d41FD62e7f3adbfdEe5B47"  # Ваша адреса
 start_block = 0
 end_block = 99999999
 page = 1
@@ -33,7 +33,7 @@ while True:
     url = (
         f"https://api.etherscan.io/api"
         f"?module=account"
-        f"&action=txlist"
+        f"&action=tokentx"  # ЗМІНЕНО: щоб отримати транзакції ERC20 токенів
         f"&address={address}"
         f"&startblock={start_block}"
         f"&endblock={end_block}"
@@ -89,17 +89,19 @@ for tx in all_transactions:
         fee = (gas_used * gas_price) / 10 ** 18
     except Exception:
         fee = 0
-
+    type_operation = "debit" if to_address == address else "credit"
+    address_counterparty = to_address if type_operation == "credit" else tx.get("from", "")
     # Підготовка рядка з 25 колонками (A-Y)
     row = [""] * 25
-    row[0] = timestamp  # A
-    row[1] = token      # B
-    row[3] = owner      # D
-    row[4] = method     # E
-    row[6] = amount     # G
-    row[8] = fee        # I
-    row[13] = to_address  # N
-    row[16] = tx_hash     # Q
+    row[0] = timestamp
+    row[1] = "ERC20"
+    row[3] = address
+    row[4] = type_operation
+    row[6] = amount
+    row[7] = "USDT"
+    row[8] = fee
+    row[13] = address_counterparty
+    row[16] = tx_hash
 
     row_data.append(row)
 
