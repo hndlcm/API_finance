@@ -1,4 +1,3 @@
-
 import json
 import gzip
 import base64
@@ -8,6 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 payee_id = os.getenv("PAYEE_ID")
+
+
 def generate_portmone_url(data: dict) -> str:
     """
     Генерує посилання на оплату Portmone за допомогою GZIP + Base64 кодування параметра `i`.
@@ -20,6 +21,7 @@ def generate_portmone_url(data: dict) -> str:
     base64_data = base64.b64encode(gzipped_data).decode('utf-8')
     i_param = quote_plus(base64_data)
     return f'https://www.portmone.com.ua/r3/uk/autoinsurance?i={i_param}'
+
 
 # Приклад використання
 if __name__ == "__main__":
