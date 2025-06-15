@@ -1,0 +1,130 @@
+import requests
+import time
+import json
+import os
+from dotenv import load_dotenv
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+
+# --- Ініціалізація таблиці ---
+def init_google_sheet():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
+    client = gspread.authorize(creds)
+
+    spreadsheet = client.open_by_url(
+        "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing"
+    )
+    return spreadsheet.worksheet("Аркуш1")
+
+
+# --- Отримання замовлень ---
+def get_all_payment_statuses(start_date: str, end_date: str):
+    load_dotenv()
+    PORTMONE_URL = "https://www.portmone.com.ua/gateway/"
+    PAYEE_ID = os.getenv("PAYEE_ID")
+    LOGIN = os.getenv("PORTMONE_LOGIN")
+    PASSWORD = os.getenv("PORTMONE_PASSWORD")
+
+    payload = {
+        "method": "result",
+        "params": {
+            "data": {
+                "login": LOGIN,
+                "password": PASSWORD,
+                "payeeId": PAYEE_ID,
+                "id": "123",
+                "startDate": start_date,
+                "endDate": end_date
+            }
+        }
+    }
+
+    headers = {"Content-Type": "application/json"}
+
+    try:
+        response = requests.post(PORTMONE_URL, json=payload, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+
+        with open("portmone_all_orders.json", "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
+        return data if isinstance(data, list) else []
+
+    except requests.exceptions.RequestException as e:
+        error_data = {"status": "error", "message": str(e)}
+        with open("portmone_error.json", "w", encoding="utf-8") as f:
+            json.dump(error_data, f, ensure_ascii=False, indent=4)
+        return []
+
+
+# --- Формування та запис ---
+def write_orders_to_sheet(worksheet, orders: list):
+    existing_rows = worksheet.get_all_values()
+    header_offset = 1  # якщо є заголовки
+
+    # Побудова індексу за shopBillId (O колонка => індекс 16)
+    existing_orders_by_id = {}
+    for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
+        if len(row) > 16 and row[16]:
+            existing_orders_by_id[row[16]] = {"row_number": i, "row_data": row + [""] * (25 - len(row))}
+
+    rows_to_update = []
+    rows_to_append = []
+
+    for order in orders:
+        new_row = [""] * 25
+
+        new_row[0] = order.get("pay_date", "")
+        new_row[1] = order.get("payee_name", "")
+        new_row[2] = order.get("payeeId", "")
+        new_row[4] = order.get("status", "")
+        new_row[5] = order.get("billAmount", "")
+        new_row[6] = order.get("billAmount", "")
+        new_row[7] = "UAH"
+        new_row[8] = order.get("payee_commission", "")
+        new_row[10] = order.get("description", "")
+        new_row[11] = order.get("cardBankName", "")
+        new_row[13] = (
+            order.get("cardMask", "") +
+            order.get("cardTypeName", "") +
+            str(order.get("gateType", ""))
+        )
+        new_row[15] = (
+            str(order.get("errorCode", "")) +
+            str(order.get("errorMessage", ""))
+        )
+        new_row[16] = order.get("shopBillId", "")
+
+        shop_bill_id = new_row[16]
+
+        if shop_bill_id in existing_orders_by_id:
+            existing = existing_orders_by_id[shop_bill_id]
+            if new_row != existing["row_data"]:
+                rows_to_update.append((existing["row_number"], new_row))
+        else:
+            rows_to_append.append(new_row)
+
+    # --- Оновлення ---
+    for row_number, row_data in rows_to_update:
+        worksheet.update(f"A{row_number}:Y{row_number}", [row_data])
+        print(f"🔁 Оновлено транзакцію на рядку {row_number}")
+
+    # --- Додавання ---
+    if rows_to_append:
+        start_row = len(existing_rows) + 1
+        worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
+        print(f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}.")
+    else:
+        print("✅ Нових транзакцій для додавання немає.")
+
+
+# --- Головна функція ---
+def export_portmone_orders(start_date: str, end_date: str):
+    worksheet = init_google_sheet()
+    orders = get_all_payment_statuses(start_date, end_date)
+    write_orders_to_sheet(worksheet, orders)
+
+
