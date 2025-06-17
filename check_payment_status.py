@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def format_amount(value):
@@ -16,15 +16,13 @@ def format_amount(value):
 
 
 def format_date(date_str):
-    # Очікуваний формат: "2025-06-03T13:29:34.000+02:00"
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
+        return dt.strftime("%Y.%m.%d %H:%M:%S")
     except Exception:
         return date_str
 
 
-# --- Ініціалізація таблиці ---
 def init_google_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
@@ -36,7 +34,6 @@ def init_google_sheet():
     return spreadsheet.worksheet("Аркуш1")
 
 
-# --- Отримання замовлень ---
 def get_all_payment_statuses(start_date: str, end_date: str):
     load_dotenv()
     PORTMONE_URL = "https://www.portmone.com.ua/gateway/"
@@ -77,11 +74,15 @@ def get_all_payment_statuses(start_date: str, end_date: str):
         return []
 
 
-# --- Формування та запис ---
 def write_orders_to_sheet(worksheet, orders: list):
-    existing_rows = worksheet.get_all_values()
-    header_offset = 1
+    try:
+        existing_rows = worksheet.get_all_values()
+    except Exception as e:
+        print("⚠️ Зачекай 60 секунд (Rate Limit)...")
+        time.sleep(60)
+        existing_rows = worksheet.get_all_values()
 
+    header_offset = 1
     existing_orders_by_id = {}
     for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
         if len(row) > 16 and row[16]:
@@ -92,14 +93,16 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     for order in orders:
         new_row = [""] * 25
-        new_row[0] = order.get("pay_date", "")
+        new_row[0] = format_date(order.get("pay_date", ""))
         new_row[1] = "portmone"
         new_row[2] = order.get("payee_name", "")
-        new_row[4] = "debit" if order.get("status", "") == "PAYED" else "invoice"
+        status = order.get("status", "")
+        new_row[4] = "debit" if status == "PAYED" else "invoice" if status == "CREATED" else status
         amount = abs(format_amount(order.get("billAmount")))
         formatted_amount = str(amount).replace('.', ',')
         new_row[5] = formatted_amount
         new_row[6] = formatted_amount
+        new_row[7]= "UAN"
         new_row[8] = format_amount(order.get("payee_commission"))
         new_row[10] = order.get("description", "")
         new_row[11] = order.get("cardMask", "")
@@ -137,8 +140,8 @@ def write_orders_to_sheet(worksheet, orders: list):
         print("✅ Нових транзакцій для додавання немає.")
 
 
-# --- Головна функція ---
 def export_portmone_orders(start_date: str, end_date: str):
     worksheet = init_google_sheet()
     orders = get_all_payment_statuses(start_date, end_date)
     write_orders_to_sheet(worksheet, orders)
+

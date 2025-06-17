@@ -66,8 +66,9 @@ def export_bitfactura_invoices_to_google_sheets():
         row[1] = "ERC20"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
-        row[5] = invoice.get("price_gross", "")
-        row[6] = invoice.get("price_gross", "")
+        amount = str(invoice.get("price_gross", "")).replace(".", ",")
+        row[5] = amount
+        row[6] = amount
         row[7] = invoice.get("currency", "")
         row[10] = invoice.get("number", "")
         row[11] = invoice.get("buyer_name", "")

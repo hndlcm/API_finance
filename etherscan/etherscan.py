@@ -94,6 +94,7 @@ def export_trc20_transactions_to_google_sheets():
         new_row[4] = type_operation
         amount = abs(format_amount(amount))
         new_row[6] = str(amount).replace('.', ',')
+        new_row[7]= "USDT"
         new_row[8] = "" if fee == 0 else fee
         new_row[13] = address_counterparty
         new_row[16] = tx_hash
