@@ -1,6 +1,8 @@
 import requests
 import time
 import json
+import os
+from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
@@ -9,119 +11,113 @@ def format_amount(value):
         return round(float(value), 2)
     except (ValueError, TypeError):
         return 0.00
-def export_trc20_transactions_to_google_sheets():
-    # Авторизація в Google Sheets
+def export_erc20_to_google_sheet():
+    # --- Налаштування Google Sheets ---
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
     client = gspread.authorize(creds)
 
-    # Відкриваємо таблицю
     spreadsheet = client.open_by_url(
         "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing"
     )
     worksheet = spreadsheet.worksheet("Аркуш1")
 
-    # Параметри API TRC20
-    address = "TRoJdqkhtJGpWVsvC67jk4Cp8FDAhQL1LE"
-    limit = 50
-    start = 0
+    # --- Налаштування Etherscan ---
+    load_dotenv()
+    api_key = os.getenv("ETHER")
+    address = "0x19Cf249E7e423b5Bd2d41FD62e7f3adbfdEe5B47"
+    start_block = 0
+    end_block = 99999999
+    page = 1
+    offset = 100
     all_transactions = []
 
     while True:
         url = (
-            f"https://apilist.tronscanapi.com/api/token_trc20/transfers"
-            f"?limit={limit}&start={start}&relatedAddress={address}&confirm=true&filterTokenValue=1"
+            f"https://api.etherscan.io/api"
+            f"?module=account"
+            f"&action=tokentx"
+            f"&address={address}"
+            f"&startblock={start_block}"
+            f"&endblock={end_block}"
+            f"&page={page}"
+            f"&offset={offset}"
+            f"&sort=asc"
+            f"&apikey={api_key}"
         )
 
         response = requests.get(url)
         if response.status_code != 200:
-            print(f"❌ Помилка при запиті: статус {response.status_code}")
+            print("❌ Помилка при запиті:", response.status_code)
             break
 
-        data = response.json()
-        transactions = data.get("token_transfers", [])
+        result = response.json()
+        transactions = result.get("result", [])
 
         if not transactions:
-            print("✅ Усі TRC20 транзакції отримано.")
+            print("✅ Усі транзакції отримано.")
             break
 
         all_transactions.extend(transactions)
-        print(f"🔄 Отримано {len(transactions)} транзакцій")
-        start += limit
-        time.sleep(0.4)
+        print(f"🔄 Сторінка {page}: Отримано {len(transactions)} транзакцій (всього: {len(all_transactions)})")
+        page += 1
+        time.sleep(0.3)
 
-    # Зберігаємо у файл
-    with open("trc20_transactions.json", "w", encoding="utf-8") as f:
-        json.dump(all_transactions, f, ensure_ascii=False, indent=2)
-    print("💾 Дані збережено у файл trc20_transactions.json")
+    # --- Зберігаємо у JSON ---
+    with open("erc20_transactions.json", "w", encoding="utf-8") as f:
+        json.dump(all_transactions, f, ensure_ascii=False, indent=4)
 
-    # Отримуємо всі існуючі рядки
-    existing_rows = worksheet.get_all_values()
-    header_offset = 1
+    print("💾 Транзакції успішно збережено у файл erc20_transactions.json")
 
-    existing_tx_by_hash = {}
-    for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
-        full_row = row + [""] * (25 - len(row))
-        tx_hash = full_row[16]
-        if tx_hash:
-            existing_tx_by_hash[tx_hash] = {"row_number": i, "row_data": full_row}
+    # --- Формуємо рядки для Google Sheets ---
+    row_data = []
 
-    rows_to_update = []
-    rows_to_append = []
-
-    address_lower = address.lower()
     for tx in all_transactions:
-        timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%Y.%m.%d %H:%M:%S")
-        token = tx.get("token_info", {}).get("symbol", "")
-        method = "TRC20"
-        to_address = tx.get("to_address", "").lower()
-        from_address = tx.get("from_address", "").lower()
-        tx_hash = tx.get("transaction_id", "")
+        timestamp = datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%Y.%m.%d %H:%M:%S")
+        token_symbol = tx.get("tokenSymbol", "UNKNOWN")
+        token_decimal = int(tx.get("tokenDecimal", "18"))
+
+        from_address = tx.get("from", "")
+        to_address = tx.get("to", "")
+        tx_hash = tx.get("hash", "")
 
         try:
-            amount = float(tx.get("quant", 0)) / 10 ** int(tx.get("token_info", {}).get("decimals", 6))
+            amount = int(tx.get("value", "0")) / (10 ** token_decimal)
         except Exception:
             amount = 0
 
-        fee = 0
-        type_operation = "debit" if to_address == address_lower else "credit"
+        try:
+            gas_used = int(tx.get("gasUsed", "0"))
+            gas_price = int(tx.get("gasPrice", "0"))
+            fee = (gas_used * gas_price) / 10 ** 18
+        except Exception:
+            fee = 0
+
+        type_operation = "debit" if to_address.lower() == address.lower() else "credit"
         address_counterparty = to_address if type_operation == "credit" else from_address
 
-        new_row = [""] * 25
-        new_row[0] = timestamp
-        new_row[1] = method
-        new_row[3] = address
-        new_row[4] = type_operation
+        row = [""] * 25
+        row[0] = timestamp
+        row[1] = "ERC20"
+        row[3] = address
+        row[4] = type_operation
         amount = abs(format_amount(amount))
-        new_row[6] = str(amount).replace('.', ',')
-        new_row[7]= "USDT"
-        new_row[8] = "" if fee == 0 else fee
-        new_row[13] = address_counterparty
-        new_row[16] = tx_hash
+        row[6] = str(amount).replace('.', ',')
+        row[7] = token_symbol
+        row[8] = "" if fee == 0 else fee
+        row[13] = address_counterparty
+        row[16] = tx_hash
 
-        if tx_hash in existing_tx_by_hash:
-            existing = existing_tx_by_hash[tx_hash]
-            if new_row != existing["row_data"]:
-                rows_to_update.append((existing["row_number"], new_row))
-        else:
-            rows_to_append.append(new_row)
+        row_data.append(row)
 
-    # Масове оновлення
-    if rows_to_update:
-        batch_data = [
-            {"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
-            for row_number, row_data in rows_to_update
-        ]
-        worksheet.batch_update(batch_data)
-        print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
+    # --- Пошук першого вільного рядка ---
+    existing_records = len(worksheet.get_all_values())
+    start_row = existing_records + 1
 
-    # Масове додавання
-    if rows_to_append:
-        start_row = len(existing_rows) + 1
-        worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
-        print(f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}.")
+    # --- Запис у Google Таблицю ---
+    if row_data:
+        worksheet.update(f"A{start_row}:Y{start_row + len(row_data) - 1}", row_data)
+        print(f"\n📊 Успішно додано {len(row_data)} рядків у Google Таблицю з рядка {start_row}.")
     else:
-        print("✅ Нових транзакцій для додавання немає.")
+        print("⚠️ Немає нових транзакцій для запису.")
 
-"""if __name__ == "__main__":
-    export_trc20_transactions_to_google_sheets()"""

@@ -2,7 +2,7 @@ import time
 from datetime import datetime, timedelta
 from facturow.factura import export_invoices_to_google_sheets
 from facturow.bitfactura import export_bitfactura_invoices_to_google_sheets
-from etherscan.etherscan import export_trc20_transactions_to_google_sheets
+from etherscan.etherscan import export_erc20_to_google_sheet
 from tronscan.transactions import export_trc20_transactions_troscan_to_google_sheets
 from check_payment_status import export_portmone_orders
 
@@ -23,7 +23,7 @@ def main_loop():
         export_bitfactura_invoices_to_google_sheets()
         print("✅ Експорт інвойсів завершено.\n")
 
-        export_trc20_transactions_to_google_sheets()
+        export_erc20_to_google_sheet()
         export_trc20_transactions_troscan_to_google_sheets()
 
         print("🚀 Запускаємо експорт замовлень Portmone за останні 2 роки...")

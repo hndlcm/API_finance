@@ -77,7 +77,7 @@ def export_invoices_to_google_sheets():
         # Перетворюємо у формат без часового поясу
         formatted = dt.strftime("%Y.%m.%d %H:%M:%S")
         row[0] = formatted
-        row[1] = "ERC20"
+        row[1] = "factura"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
         amount = str(invoice.get("price_gross", "")).replace(".", ",")

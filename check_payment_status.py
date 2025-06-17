@@ -102,7 +102,7 @@ def write_orders_to_sheet(worksheet, orders: list):
         formatted_amount = str(amount).replace('.', ',')
         new_row[5] = formatted_amount
         new_row[6] = formatted_amount
-        new_row[7]= "UAN"
+        new_row[7]= "UAH"
         new_row[8] = format_amount(order.get("payee_commission"))
         new_row[10] = order.get("description", "")
         new_row[11] = order.get("cardMask", "")
