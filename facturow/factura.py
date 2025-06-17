@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import requests
 import json
 import os
@@ -70,8 +72,12 @@ def export_invoices_to_google_sheets():
 
     for invoice in invoices:
         row = [""] * 17
-        row[0] = invoice.get("issue_date", "")
-        row[1] = "fakturownia"
+        dt = datetime.fromisoformat(invoice.get("updated_at", ""))
+
+        # Перетворюємо у формат без часового поясу
+        formatted = dt.strftime("%Y.%m.%d %H:%M:%S")
+        row[0] = formatted
+        row[1] = "ERC20"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
         row[5] = invoice.get("price_gross", "")

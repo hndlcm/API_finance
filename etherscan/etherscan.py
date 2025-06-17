@@ -4,7 +4,11 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
-
+def format_amount(value):
+    try:
+        return round(float(value), 2)
+    except (ValueError, TypeError):
+        return 0.00
 def export_trc20_transactions_to_google_sheets():
     # Авторизація в Google Sheets
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -67,7 +71,7 @@ def export_trc20_transactions_to_google_sheets():
 
     address_lower = address.lower()
     for tx in all_transactions:
-        timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%Y-%m-%d %H:%M:%S")
+        timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%Y.%m.%d %H:%M:%S")
         token = tx.get("token_info", {}).get("symbol", "")
         method = "TRC20"
         to_address = tx.get("to_address", "").lower()
@@ -88,9 +92,9 @@ def export_trc20_transactions_to_google_sheets():
         new_row[1] = method
         new_row[3] = address
         new_row[4] = type_operation
-        new_row[6] = amount
-        new_row[7] = token
-        new_row[8] = fee
+        amount = abs(format_amount(amount))
+        new_row[6] = str(amount).replace('.', ',')
+        new_row[8] = "" if fee == 0 else fee
         new_row[13] = address_counterparty
         new_row[16] = tx_hash
 

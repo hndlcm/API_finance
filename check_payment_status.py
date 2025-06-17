@@ -7,6 +7,23 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
+
+def format_amount(value):
+    try:
+        return round(float(value), 2)
+    except (ValueError, TypeError):
+        return 0.00
+
+
+def format_date(date_str):
+    # Очікуваний формат: "2025-06-03T13:29:34.000+02:00"
+    try:
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return date_str
+
+
 # --- Ініціалізація таблиці ---
 def init_google_sheet():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -63,9 +80,8 @@ def get_all_payment_statuses(start_date: str, end_date: str):
 # --- Формування та запис ---
 def write_orders_to_sheet(worksheet, orders: list):
     existing_rows = worksheet.get_all_values()
-    header_offset = 1  # якщо є заголовки
+    header_offset = 1
 
-    # Побудова індексу за shopBillId (O колонка => індекс 16)
     existing_orders_by_id = {}
     for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
         if len(row) > 16 and row[16]:
@@ -76,26 +92,19 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     for order in orders:
         new_row = [""] * 25
-
         new_row[0] = order.get("pay_date", "")
-        new_row[1] = order.get("payee_name", "")
-        new_row[2] = order.get("payeeId", "")
-        new_row[4] = order.get("status", "")
-        new_row[5] = order.get("billAmount", "")
-        new_row[6] = order.get("billAmount", "")
-        new_row[7] = "UAH"
-        new_row[8] = order.get("payee_commission", "")
+        new_row[1] = "portmone"
+        new_row[2] = order.get("payee_name", "")
+        new_row[4] = "debit" if order.get("status", "") == "PAYED" else "invoice"
+        amount = abs(format_amount(order.get("billAmount")))
+        formatted_amount = str(amount).replace('.', ',')
+        new_row[5] = formatted_amount
+        new_row[6] = formatted_amount
+        new_row[8] = format_amount(order.get("payee_commission"))
         new_row[10] = order.get("description", "")
-        new_row[11] = order.get("cardBankName", "")
-        new_row[13] = (
-            order.get("cardMask", "") +
-            order.get("cardTypeName", "") +
-            str(order.get("gateType", ""))
-        )
-        new_row[15] = (
-            str(order.get("errorCode", "")) +
-            str(order.get("errorMessage", ""))
-        )
+        new_row[11] = order.get("cardMask", "")
+        new_row[13] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
+        new_row[15] = f"""{order.get("errorCode", "")}, {order.get("errorMessage", "")}"""
         new_row[16] = order.get("shopBillId", "")
 
         shop_bill_id = new_row[16]
@@ -107,12 +116,19 @@ def write_orders_to_sheet(worksheet, orders: list):
         else:
             rows_to_append.append(new_row)
 
-    # --- Оновлення ---
-    for row_number, row_data in rows_to_update:
-        worksheet.update(f"A{row_number}:Y{row_number}", [row_data])
-        print(f"🔁 Оновлено транзакцію на рядку {row_number}")
+    # --- Оновлення рядків через batch_update ---
+    batch_data = [
+        {
+            "range": f"A{row_number}:Y{row_number}",
+            "values": [row_data]
+        }
+        for row_number, row_data in rows_to_update
+    ]
+    if batch_data:
+        worksheet.batch_update(batch_data)
+        print(f"🔁 Оновлено {len(batch_data)} рядків.")
 
-    # --- Додавання ---
+    # --- Додавання нових ---
     if rows_to_append:
         start_row = len(existing_rows) + 1
         worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
@@ -126,5 +142,3 @@ def export_portmone_orders(start_date: str, end_date: str):
     worksheet = init_google_sheet()
     orders = get_all_payment_statuses(start_date, end_date)
     write_orders_to_sheet(worksheet, orders)
-
-
