@@ -104,8 +104,8 @@ def write_orders_to_sheet(worksheet, orders: list):
         new_row[7]= "UAH"
         new_row[8] = abs(format_amount(order.get("payee_commission")))
         new_row[10] = order.get("description", "")
-        new_row[11] = order.get("cardMask", "")
-        new_row[13] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
+        new_row[11] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
+        new_row[13] = order.get("cardMask", "")
         new_row[15] = f"""{order.get("errorCode", "")}, {order.get("errorMessage", "")}"""
         new_row[16] = order.get("shopBillId", "")
 

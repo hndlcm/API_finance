@@ -15,33 +15,52 @@ def generate_date_ranges(start_date, end_date, delta_days=31):
 
 def main_loop():
     while True:
-        print("🚀 Запускаємо експорт TRC20 транзакцій...")
-        export_invoices_to_google_sheets()
-        print("✅ TRC20 експорт завершено.\n")
+        try:
+            print("🚀 Запускаємо експорт TRC20 транзакцій...")
+            export_invoices_to_google_sheets()
+            print("✅ TRC20 експорт завершено.\n")
+        except Exception as e:
+            print(f"❌ Помилка при експорті TRC20: {e}\n")
 
-        print("🚀 Запускаємо експорт інвойсів Bitfactura...")
-        export_bitfactura_invoices_to_google_sheets()
-        print("✅ Експорт інвойсів завершено.\n")
+        try:
+            print("🚀 Запускаємо експорт інвойсів Bitfactura...")
+            export_bitfactura_invoices_to_google_sheets()
+            print("✅ Експорт інвойсів завершено.\n")
+        except Exception as e:
+            print(f"❌ Помилка при експорті Bitfactura: {e}\n")
 
-        export_erc20_to_google_sheet()
-        export_trc20_transactions_troscan_to_google_sheets()
+        try:
+            export_erc20_to_google_sheet()
+        except Exception as e:
+            print(f"❌ Помилка при експорті ERC20: {e}")
 
-        print("🚀 Запускаємо експорт замовлень Portmone за останні 2 роки...")
+        try:
+            export_trc20_transactions_troscan_to_google_sheets()
+        except Exception as e:
+            print(f"❌ Помилка при експорті TRC20 Tronscan: {e}")
 
-        end_date = datetime.today()
-        start_date = end_date - timedelta(days=365 * 2)  # 2 роки тому
+        try:
+            print("🚀 Запускаємо експорт замовлень Portmone за останні 2 роки...")
 
-        for start, end in generate_date_ranges(start_date, end_date):
-            start_str = start.strftime("%d.%m.%Y")
-            end_str = end.strftime("%d.%m.%Y")
-            print(f"  ↪ Обробка періоду {start_str} - {end_str}")
-            export_portmone_orders(start_str, end_str)
-            time.sleep(1)  # трохи почекати між запитами, щоб не перевантажити API
+            end_date = datetime.today()
+            start_date = end_date - timedelta(days=365 * 2)
 
-        print("✅ Експорт замовлень Portmone завершено.\n")
+            for start, end in generate_date_ranges(start_date, end_date):
+                try:
+                    start_str = start.strftime("%d.%m.%Y")
+                    end_str = end.strftime("%d.%m.%Y")
+                    print(f"  ↪ Обробка періоду {start_str} - {end_str}")
+                    export_portmone_orders(start_str, end_str)
+                    time.sleep(1)
+                except Exception as e:
+                    print(f"❌ Помилка для періоду {start_str} - {end_str}: {e}")
 
-        print("⏰ Чекаємо 1 годину до наступного запуску...")
-        time.sleep(3600)  # Пауза 3600 секунд (1 година)
+            print("✅ Експорт замовлень Portmone завершено.\n")
+        except Exception as e:
+            print(f"❌ Помилка при експорті Portmone: {e}\n")
+
+        print("⏰ Чекаємо 1 годину до наступного запуску...\n")
+        time.sleep(3600)
 
 if __name__ == "__main__":
     main_loop()

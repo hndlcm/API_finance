@@ -99,7 +99,6 @@ def export_erc20_to_google_sheet():
         row[5] = formatted_amount
         row[6] = formatted_amount
         row[7] = token_symbol
-        row[8] = "" if abs(fee) == 0 else abs(fee)
         row[13] = counterparty
         row[16] = tx_hash
 
