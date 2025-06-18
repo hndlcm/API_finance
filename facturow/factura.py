@@ -7,6 +7,13 @@ from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+def format_date(date_str):
+    try:
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return dt.strftime("%d.%m.%Y %H:%M:%S")
+    except Exception:
+        return date_str
+
 def export_invoices_to_google_sheets():
     load_dotenv()
     API_TOKEN = os.getenv("FACTUROW")
@@ -72,17 +79,16 @@ def export_invoices_to_google_sheets():
 
     for invoice in invoices:
         row = [""] * 17
-        dt = datetime.fromisoformat(invoice.get("updated_at", ""))
 
         # Перетворюємо у формат без часового поясу
-        formatted = dt.strftime("%Y.%m.%d %H:%M:%S")
+        formatted = format_date(invoice.get("updated_at", ""))
         row[0] = formatted
-        row[1] = "factura"
+        row[1] = "fakturownia"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
-        amount = str(invoice.get("price_gross", "")).replace(".", ",")
-        row[5] = amount
-        row[6] = amount
+        amount = invoice.get("price_gross", "")
+        row[5] = float(amount)
+        row[6] = float(amount)
         row[7] = invoice.get("currency", "")
         row[10] = invoice.get("number", "")
         row[11] = invoice.get("client_name", "")

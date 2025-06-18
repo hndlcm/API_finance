@@ -99,11 +99,10 @@ def write_orders_to_sheet(worksheet, orders: list):
         status = order.get("status", "")
         new_row[4] = "debit" if status == "PAYED" else "invoice" if status == "CREATED" else status
         amount = abs(format_amount(order.get("billAmount")))
-        formatted_amount = str(amount).replace('.', ',')
-        new_row[5] = formatted_amount
-        new_row[6] = formatted_amount
+        new_row[5] = amount
+        new_row[6] = amount
         new_row[7]= "UAH"
-        new_row[8] = format_amount(order.get("payee_commission"))
+        new_row[8] = abs(format_amount(order.get("payee_commission")))
         new_row[10] = order.get("description", "")
         new_row[11] = order.get("cardMask", "")
         new_row[13] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
