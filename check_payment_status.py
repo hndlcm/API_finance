@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime, timedelta
+from table import init_google_sheet
 
 
 def format_amount(value):
@@ -21,17 +22,6 @@ def format_date(date_str):
         return dt.strftime("%Y.%m.%d %H:%M:%S")
     except Exception:
         return date_str
-
-
-def init_google_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
-    client = gspread.authorize(creds)
-
-    spreadsheet = client.open_by_url(
-        "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing"
-    )
-    return spreadsheet.worksheet("Аркуш1")
 
 
 def get_all_payment_statuses(start_date: str, end_date: str):
@@ -101,10 +91,11 @@ def write_orders_to_sheet(worksheet, orders: list):
         amount = abs(format_amount(order.get("billAmount")))
         new_row[5] = amount
         new_row[6] = amount
-        new_row[7]= "UAH"
+        new_row[7] = "UAH"
         new_row[8] = abs(format_amount(order.get("payee_commission")))
         new_row[10] = order.get("description", "")
-        new_row[11] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
+        new_row[
+            11] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
         new_row[13] = order.get("cardMask", "")
         new_row[15] = f"""{order.get("errorCode", "")}, {order.get("errorMessage", "")}"""
         new_row[16] = order.get("shopBillId", "")
@@ -143,4 +134,3 @@ def export_portmone_orders(start_date: str, end_date: str):
     worksheet = init_google_sheet()
     orders = get_all_payment_statuses(start_date, end_date)
     write_orders_to_sheet(worksheet, orders)
-
