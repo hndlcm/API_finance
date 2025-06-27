@@ -7,6 +7,21 @@ import time
 import json
 
 load_dotenv()
+
+def load_wallets(file_path="wallets.txt"):
+    wallets = {}
+    if not os.path.exists(file_path):
+        print(f"⚠️ Файл {file_path} не знайдено.")
+        return wallets
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or "=" not in line:
+                continue
+            system, addresses = line.split("=", 1)
+            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
+    return wallets
+
 TOKEN = os.getenv('PRIVAT')
 
 BASE_URL = "https://acp.privatbank.ua/api/statements/transactions"
@@ -59,12 +74,6 @@ def save_transactions_to_json(transactions: list, filename: str = "privat_transa
     print(f"✅ Транзакції збережено у файл {filename}")
 
 
-def print_sample_transactions(transactions: list, sample_size: int = 3):
-    print("\nПриклад перших транзакцій:")
-    for tx in transactions[:sample_size]:
-        print(f"{tx['DAT_KL']} | {tx['SUM']} грн | {tx['OSND']}")
-
-
 def write_privat_transactions_to_sheet(worksheet, transactions: list):
     try:
         existing_rows = worksheet.get_all_values()
@@ -76,7 +85,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
     header_offset = 1
     existing_tx_by_id = {}
     for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
-        if len(row) > 16 and row[16]:  # Колонка Q (17-та)
+        if len(row) > 16 and row[16]:
             existing_tx_by_id[row[16]] = {"row_number": i, "row_data": row + [""] * (25 - len(row))}
 
     rows_to_update = []
@@ -85,7 +94,6 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
     for tx in transactions:
         new_row = [""] * 25
 
-        # Парсимо дату та час (поля DAT_KL та TIM_P)
         datetime_str = f"{tx.get('DAT_KL', '')} {tx.get('TIM_P', '')}"
         try:
             tx_time = datetime.strptime(datetime_str, "%d.%m.%Y %H:%M")
@@ -93,20 +101,20 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
         except Exception:
             tx_time_str = datetime_str.strip()
 
-        # Заповнюємо рядок у відповідності до полів ПриватБанку
-        new_row[0] = tx_time_str                                  # Дата і час операції
-        new_row[1] = "privatbank"                                # Джерело
-        new_row[3] = tx.get("AUT_MY_ACC", "")                    # Номер рахунку (отримувача)
-        new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"  # Тип операції
-        new_row[5] = float(tx.get("SUM", "0").replace(",", ".")) # Сума
-        new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))# Сума в нац. валюті
-        new_row[7] = tx.get("CCY", "UAH")                        # Валюта
-        new_row[10] = tx.get("OSND", "")                         # Призначення платежу
-        new_row[11] = tx.get("AUT_CNTR_NAM", "")                 # Контрагент
-        new_row[13] = tx.get("AUT_CNTR_ACC", "")                 # Рахунок контрагента
-        new_row[14] = ""                                         # MCC (якщо буде)
-        new_row[15] = ""                                         # Коментар (якщо є)
-        new_row[16] = tx.get("ID", "")                            # Унікальний ID транзакції
+        new_row[0] = tx_time_str
+        new_row[1] = "privatbank"
+        new_row[3] = tx.get("AUT_MY_ACC", "")
+        new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
+        new_row[5] = float(tx.get("SUM", "0").replace(",", "."))
+        new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))
+        new_row[7] = tx.get("CCY", "UAH")
+        new_row[10] = tx.get("OSND", "")
+        new_row[11] = tx.get("AUT_CNTR_NAM", "")
+        new_row[12] = tx.get("AUT_CNTR_CRF ", "")
+        new_row[13] = tx.get("AUT_CNTR_ACC", "")
+        new_row[14] = ""
+        new_row[15] = ""
+        new_row[16] = tx.get("ID", "")
 
         tx_id = new_row[16]
         if tx_id in existing_tx_by_id:
@@ -116,19 +124,11 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
         else:
             rows_to_append.append(new_row)
 
-    # Оновлення рядків
-    batch_data = [
-        {
-            "range": f"A{row_number}:Y{row_number}",
-            "values": [row_data]
-        }
-        for row_number, row_data in rows_to_update
-    ]
-    if batch_data:
+    if rows_to_update:
+        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
         worksheet.batch_update(batch_data)
-        print(f"🔁 Оновлено {len(batch_data)} транзакцій.")
+        print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
-    # Додавання нових рядків
     if rows_to_append:
         start_row = len(existing_rows) + 1
         worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
@@ -137,16 +137,25 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
         print("✅ Нових транзакцій немає.")
 
 
-def privat():
-    start_date = "01-06-2025"
-    end_date = "20-06-2025"
-
+def privat(start_date="01-06-2025", end_date="20-06-2025"):
     print(f"🕐 Отримуємо транзакції з {start_date} по {end_date}...")
     transactions = fetch_transactions(start_date, end_date)
-    save_transactions_to_json(transactions)
-    print_sample_transactions(transactions)
-
+    save_transactions_to_json(transactions, filename="privat_transactions.json")
     worksheet = init_google_sheet()
     write_privat_transactions_to_sheet(worksheet, transactions)
 
 
+def main():
+    wallets = load_wallets()
+    if "PRIVAT" not in wallets:
+        print("❌ У wallets.txt немає запису PRIVAT")
+        return
+
+    start_date = "01-06-2025"
+    end_date = "27-06-2025"
+
+    privat(start_date, end_date)
+
+
+if __name__ == "__main__":
+    main()

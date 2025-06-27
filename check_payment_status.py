@@ -9,6 +9,18 @@ from datetime import datetime, timedelta
 from table import init_google_sheet
 
 
+def load_wallets(file_path="wallets.txt"):
+    wallets = {}
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or "=" not in line:
+                continue
+            system, addresses = line.split("=", 1)
+            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
+    return wallets
+
+
 def format_amount(value):
     try:
         return round(float(value), 2)
@@ -55,7 +67,13 @@ def get_all_payment_statuses(start_date: str, end_date: str):
         with open("portmone_all_orders.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        return data if isinstance(data, list) else []
+        # В залежності від формату відповіді, вертаємо список замовлень
+        if isinstance(data, dict) and "result" in data:
+            return data["result"]
+        elif isinstance(data, list):
+            return data
+        else:
+            return []
 
     except requests.exceptions.RequestException as e:
         error_data = {"status": "error", "message": str(e)}
@@ -67,7 +85,7 @@ def get_all_payment_statuses(start_date: str, end_date: str):
 def write_orders_to_sheet(worksheet, orders: list):
     try:
         existing_rows = worksheet.get_all_values()
-    except Exception as e:
+    except Exception:
         print("⚠️ Зачекай 60 секунд (Rate Limit)...")
         time.sleep(60)
         existing_rows = worksheet.get_all_values()
@@ -94,10 +112,9 @@ def write_orders_to_sheet(worksheet, orders: list):
         new_row[7] = "UAH"
         new_row[8] = abs(format_amount(order.get("payee_commission")))
         new_row[10] = order.get("description", "")
-        new_row[
-            11] = f"""{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}"""
+        new_row[11] = f'{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}'
         new_row[13] = order.get("cardMask", "")
-        new_row[15] = f"""{order.get("errorCode", "")}, {order.get("errorMessage", "")}"""
+        new_row[15] = f'{order.get("errorCode", "")}, {order.get("errorMessage", "")}'
         new_row[16] = order.get("shopBillId", "")
 
         shop_bill_id = new_row[16]
@@ -110,16 +127,16 @@ def write_orders_to_sheet(worksheet, orders: list):
             rows_to_append.append(new_row)
 
     # --- Оновлення рядків через batch_update ---
-    batch_data = [
-        {
-            "range": f"A{row_number}:Y{row_number}",
-            "values": [row_data]
-        }
-        for row_number, row_data in rows_to_update
-    ]
-    if batch_data:
+    if rows_to_update:
+        batch_data = [
+            {
+                "range": f"A{row_number}:Y{row_number}",
+                "values": [row_data]
+            }
+            for row_number, row_data in rows_to_update
+        ]
         worksheet.batch_update(batch_data)
-        print(f"🔁 Оновлено {len(batch_data)} рядків.")
+        print(f"🔁 Оновлено {len(rows_to_update)} рядків.")
 
     # --- Додавання нових ---
     if rows_to_append:

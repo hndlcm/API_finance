@@ -13,57 +13,75 @@ def format_amount(value):
         return 0.00
 
 
+def load_wallets(file_path="wallets.txt"):
+    wallets = {}
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line or "=" not in line:
+                continue
+            system, addresses = line.split("=", 1)
+            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
+    return wallets
+
+
 def export_trc20_transactions_troscan_to_google_sheets():
-    # ⚙️ Авторизація до Google Sheets
+    # Авторизація Google Sheets
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
     client = gspread.authorize(creds)
-
-    # 📄 Відкриваємо таблицю
     spreadsheet = client.open_by_url(
         "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing"
     )
     worksheet = spreadsheet.worksheet("Аркуш1")
 
-    # 🔗 TRC20 API
-    address = "TRoJdqkhtJGpWVsvC67jk4Cp8FDAhQL1LE"
-    limit = 50
-    start = 0
+    # Завантажуємо TRC20 адреси з wallets.txt
+    wallets = load_wallets()
+    trc20_addresses = wallets.get("TRC20", [])
+
+    if not trc20_addresses:
+        print("⚠️ TRC20 адреси не знайдено у wallets.txt")
+        return
+
     all_transactions = []
 
-    while True:
-        url = (
-            f"https://apilist.tronscanapi.com/api/token_trc20/transfers"
-            f"?limit={limit}&start={start}&relatedAddress={address}&confirm=true&filterTokenValue=1"
-        )
+    for address in trc20_addresses:
+        print(f"\n📥 Обробка TRC20 адреси: {address}")
+        limit = 50
+        start = 0
 
-        response = requests.get(url)
-        if response.status_code != 200:
-            print(f"❌ Помилка при запиті: статус {response.status_code}")
-            break
+        while True:
+            url = (
+                f"https://apilist.tronscanapi.com/api/token_trc20/transfers"
+                f"?limit={limit}&start={start}&relatedAddress={address}&confirm=true&filterTokenValue=1"
+            )
 
-        data = response.json()
-        transactions = data.get("token_transfers", [])
+            response = requests.get(url)
+            if response.status_code != 200:
+                print(f"❌ Помилка при запиті: статус {response.status_code}")
+                break
 
-        if not transactions:
-            print("✅ Усі TRC20 транзакції отримано.")
-            break
+            data = response.json()
+            transactions = data.get("token_transfers", [])
 
-        all_transactions.extend(transactions)
-        print(f"🔄 Отримано {len(transactions)} транзакцій")
-        start += limit
-        time.sleep(0.4)
+            if not transactions:
+                print("✅ Усі TRC20 транзакції отримано.")
+                break
 
-    # 💾 Зберігаємо у файл
+            for tx in transactions:
+                tx["__wallet_address__"] = address
+            all_transactions.extend(transactions)
+            print(f"🔄 Отримано {len(transactions)} транзакцій")
+            start += limit
+            time.sleep(0.4)
+
+    # Зберігаємо всі транзакції
     with open("trc20_transactions.json", "w", encoding="utf-8") as f:
         json.dump(all_transactions, f, ensure_ascii=False, indent=2)
     print("💾 Дані збережено у файл trc20_transactions.json")
 
-    # --- Отримуємо існуючі записи з таблиці ---
     existing_rows = worksheet.get_all_values()
-    header_offset = 1  # якщо є заголовок, якщо ні - поставте 0
-
-    # Індекс за tx_hash (колонка Q, індекс 16)
+    header_offset = 1
     existing_tx_by_hash = {}
     for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
         full_row = row + [""] * (25 - len(row))
@@ -74,9 +92,10 @@ def export_trc20_transactions_troscan_to_google_sheets():
     rows_to_update = []
     rows_to_append = []
 
-    # --- Формуємо дані для запису з перевіркою ---
-    address_lower = address.lower()
     for tx in all_transactions:
+        address = tx.get("__wallet_address__")
+        address_lower = address.lower()
+
         timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d.%m.%Y %H:%M:%S")
         token = tx.get("token_info", {}).get("symbol", "")
         method = "TRC20"
@@ -89,7 +108,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
         except Exception:
             amount = 0
 
-        fee = 0  # TRC20 не повертає fee
+        fee = 0
         type_operation = "debit" if to_address == address_lower else "credit"
         address_counterparty = to_address if type_operation == "credit" else from_address
 
@@ -98,10 +117,9 @@ def export_trc20_transactions_troscan_to_google_sheets():
         new_row[1] = method
         new_row[3] = address
         new_row[4] = type_operation
-        amount = abs(format_amount(amount))
-        new_row[5] = amount
-        new_row[6] = amount
-        new_row[7] = "USDT"
+        new_row[5] = abs(format_amount(amount))
+        new_row[6] = abs(format_amount(amount))
+        new_row[7] = token or "USDT"
         new_row[8] = "" if abs(fee) == 0 else abs(fee)
         new_row[13] = address_counterparty
         new_row[16] = tx_hash
@@ -113,19 +131,18 @@ def export_trc20_transactions_troscan_to_google_sheets():
         else:
             rows_to_append.append(new_row)
 
-    # --- Масове оновлення існуючих рядків ---
     if rows_to_update:
-        batch_data = [
-            {"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
-            for row_number, row_data in rows_to_update
-        ]
+        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
         worksheet.batch_update(batch_data)
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
-    # --- Масове додавання нових рядків ---
     if rows_to_append:
         start_row = len(existing_rows) + 1
         worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
-        print(f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}.")
+        print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
     else:
         print("✅ Нових транзакцій для додавання немає.")
+
+
+if __name__ == "__main__":
+    export_trc20_transactions_troscan_to_google_sheets()
