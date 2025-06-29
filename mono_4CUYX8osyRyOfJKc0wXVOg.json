@@ -1,0 +1,46 @@
+[
+    {
+        "id": "zrvDjBYhbwTLWOWLuw",
+        "time": 1736490174,
+        "description": "Пилип О.",
+        "mcc": 4829,
+        "originalMcc": 4829,
+        "amount": -1100000,
+        "operationAmount": -1100000,
+        "currencyCode": 980,
+        "commissionRate": 0,
+        "cashbackAmount": 0,
+        "balance": 0,
+        "hold": false,
+        "receiptId": "C8MX-K636-PC05-X8C0"
+    },
+    {
+        "id": "G0YMsGudTbMupoeI0A",
+        "time": 1736261217,
+        "description": "Пилип О.",
+        "mcc": 4829,
+        "originalMcc": 4829,
+        "amount": -100000,
+        "operationAmount": -100000,
+        "currencyCode": 980,
+        "commissionRate": 0,
+        "cashbackAmount": 0,
+        "balance": 1100000,
+        "hold": false,
+        "receiptId": "CPHE-23H2-3E72-0P53"
+    },
+    {
+        "id": "l4k9biFOArQfdfuoVg",
+        "time": 1736246397,
+        "description": "З гривневого рахунку ФОП",
+        "mcc": 4829,
+        "originalMcc": 4829,
+        "amount": 1200000,
+        "operationAmount": 1200000,
+        "currencyCode": 980,
+        "commissionRate": 0,
+        "cashbackAmount": 0,
+        "balance": 1200000,
+        "hold": false
+    }
+]

@@ -8,6 +8,7 @@ import json
 
 load_dotenv()
 
+
 def load_wallets(file_path="wallets.txt"):
     wallets = {}
     if not os.path.exists(file_path):
@@ -22,7 +23,9 @@ def load_wallets(file_path="wallets.txt"):
             wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
     return wallets
 
-TOKEN = os.getenv('PRIVAT')
+
+wallets = load_wallets()
+TOKEN = wallets.get("PRIVAT")[0]
 
 BASE_URL = "https://acp.privatbank.ua/api/statements/transactions"
 HEADERS = {
@@ -125,7 +128,8 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
             rows_to_append.append(new_row)
 
     if rows_to_update:
-        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
+        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in
+                      rows_to_update]
         worksheet.batch_update(batch_data)
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
@@ -143,19 +147,3 @@ def privat(start_date="01-06-2025", end_date="20-06-2025"):
     save_transactions_to_json(transactions, filename="privat_transactions.json")
     worksheet = init_google_sheet()
     write_privat_transactions_to_sheet(worksheet, transactions)
-
-
-def main():
-    wallets = load_wallets()
-    if "PRIVAT" not in wallets:
-        print("❌ У wallets.txt немає запису PRIVAT")
-        return
-
-    start_date = "01-06-2025"
-    end_date = "27-06-2025"
-
-    privat(start_date, end_date)
-
-
-if __name__ == "__main__":
-    main()

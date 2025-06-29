@@ -1,12 +1,14 @@
 import time
 from datetime import datetime, timedelta
 from facturow.factura import export_invoices_to_google_sheets
-from facturow.bitfactura import export_bitfactura_invoices_to_google_sheets
+from facturow.bitfactura import export_invoices_to_google_sheets_bit
 from etherscan.etherscan import export_erc20_to_google_sheet
 from tronscan.transactions import export_trc20_transactions_troscan_to_google_sheets
 from check_payment_status import export_portmone_orders
 from mono.mono import mono
 from privat.privat import privat
+
+
 def generate_date_ranges(start_date, end_date, delta_days=31):
     current_start = start_date
     while current_start < end_date:
@@ -17,7 +19,7 @@ def generate_date_ranges(start_date, end_date, delta_days=31):
 
 def main_loop():
     while True:
-        try:
+        """        try:
             print("🚀 Запускаємо експорт privat транзакцій...")
             privat()
             print("✅ privat експорт завершено.\n")
@@ -39,10 +41,10 @@ def main_loop():
 
         try:
             print("🚀 Запускаємо експорт інвойсів Bitfactura...")
-            export_bitfactura_invoices_to_google_sheets()
+            export_invoices_to_google_sheets_bit()
             print("✅ Експорт інвойсів завершено.\n")
         except Exception as e:
-            print(f"❌ Помилка при експорті Bitfactura: {e}\n")
+            print(f"❌ Помилка при експорті Bitfactura: {e}\n")"""
 
         try:
             export_erc20_to_google_sheet()

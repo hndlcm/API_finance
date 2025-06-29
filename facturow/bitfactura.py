@@ -38,9 +38,9 @@ def format_date(date_str):
         return date_str
 
 
-def export_bitfactura_invoices_to_google_sheets(worksheet):
+def export_bitfactura_invoices_to_google_sheets(worksheet, api_token=None):
     load_dotenv()
-    API_TOKEN = os.getenv("BITFACTURA")
+    API_TOKEN = api_token or os.getenv("BITFACTURA") or os.getenv("BITFACTURA") or os.getenv("BITFACTURA")
     BASE_URL = "https://handleua.bitfaktura.com.ua"
 
     def get_invoices(page=1):
@@ -107,7 +107,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet):
         print("✅ Нових інвойсів для додавання немає.")
 
 
-def main():
+def export_invoices_to_google_sheets_bit():
     # Авторизація Google Sheets
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
@@ -119,9 +119,6 @@ def main():
     wallets = load_wallets()
     # Якщо хочеш, можна розширити на декілька платіжних систем
     if "BITFACTURA" in wallets:
-        # Можна передати токени з wallets, якщо треба (залежить від API)
-        export_bitfactura_invoices_to_google_sheets(worksheet)
+        for token in wallets["BITFACTURA"]:
+            export_bitfactura_invoices_to_google_sheets(worksheet, api_token=token)
 
-
-if __name__ == "__main__":
-    main()

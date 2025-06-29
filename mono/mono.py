@@ -10,10 +10,6 @@ from table import init_google_sheet
 
 load_dotenv()
 
-TOKEN = os.getenv('MONO')
-BASE_URL = 'https://api.monobank.ua/personal/statement/{account}/{from_time}/{to_time}'
-HEADERS = {'X-Token': TOKEN}
-
 
 def load_wallets(file_path="wallets.txt"):
     wallets = {}
@@ -25,6 +21,12 @@ def load_wallets(file_path="wallets.txt"):
             system, addresses = line.split("=", 1)
             wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
     return wallets
+
+
+wallets = load_wallets()
+TOKEN = wallets.get("MONO")[0]
+BASE_URL = 'https://api.monobank.ua/personal/statement/{account}/{from_time}/{to_time}'
+HEADERS = {'X-Token': TOKEN}
 
 
 def info_client():
@@ -71,7 +73,8 @@ def save_monobank_transactions_to_json(account_id, days_back=183, filename='mono
 
     while from_time < to_time:
         chunk_to_time = min(from_time + max_range_seconds, to_time)
-        print(f"📦 Отримуємо транзакції з {datetime.fromtimestamp(from_time)} до {datetime.fromtimestamp(chunk_to_time)}")
+        print(
+            f"📦 Отримуємо транзакції з {datetime.fromtimestamp(from_time)} до {datetime.fromtimestamp(chunk_to_time)}")
         try:
             chunk_transactions = get_monobank_statements(account_id, from_time, chunk_to_time)
             all_transactions.extend(chunk_transactions)
@@ -142,7 +145,8 @@ def write_monobank_transactions_to_sheet(account_id, worksheet, transactions: li
             rows_to_append.append(new_row)
 
     if rows_to_update:
-        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
+        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in
+                      rows_to_update]
         worksheet.batch_update(batch_data)
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
@@ -180,8 +184,6 @@ def mono():
             continue
 
         print(f"\n📘 Опрацьовується рахунок: {account_id}")
-        transactions = save_monobank_transactions_to_json(account_id=account_id, days_back=183, filename=f"mono_{account_id}.json")
+        transactions = save_monobank_transactions_to_json(account_id=account_id, days_back=183,
+                                                          filename=f"mono_{account_id}.json")
         write_monobank_transactions_to_sheet(iban, worksheet, transactions)
-
-
-

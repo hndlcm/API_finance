@@ -20,8 +20,17 @@ def load_wallets(file_path="wallets.txt"):
             line = line.strip()
             if not line or "=" not in line:
                 continue
-            system, addresses = line.split("=", 1)
-            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
+            system, data = line.split("=", 1)
+            system = system.strip()
+            entries = [x.strip() for x in data.split(";") if x.strip()]
+            wallets[system] = []
+            for entry in entries:
+                # Кожен запис у вигляді "address,apikey"
+                parts = [x.strip() for x in entry.split(",")]
+                if len(parts) == 2:
+                    wallets[system].append({"address": parts[0], "apikey": parts[1]})
+                else:
+                    print(f"⚠️ Помилка формату для {system}: {entry}")
     return wallets
 
 
@@ -35,17 +44,18 @@ def export_trc20_transactions_troscan_to_google_sheets():
     )
     worksheet = spreadsheet.worksheet("Аркуш1")
 
-    # Завантажуємо TRC20 адреси з wallets.txt
+    # --- Завантажуємо адреси + ключі ---
     wallets = load_wallets()
-    trc20_addresses = wallets.get("TRC20", [])
+    trc20_data = wallets.get("ERC20", [])
 
-    if not trc20_addresses:
+    if not trc20_data:
         print("⚠️ TRC20 адреси не знайдено у wallets.txt")
         return
 
     all_transactions = []
 
-    for address in trc20_addresses:
+    for item in trc20_data:
+        address = item["address"]
         print(f"\n📥 Обробка TRC20 адреси: {address}")
         limit = 50
         start = 0
@@ -144,5 +154,4 @@ def export_trc20_transactions_troscan_to_google_sheets():
         print("✅ Нових транзакцій для додавання немає.")
 
 
-if __name__ == "__main__":
-    export_trc20_transactions_troscan_to_google_sheets()
+
