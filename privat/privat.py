@@ -1,41 +1,20 @@
-import os
-from datetime import datetime
-from table import init_google_sheet
-from dotenv import load_dotenv
-import requests
 import time
 import json
+import requests
+from datetime import datetime
+from config import CONFIG
+from table import init_google_sheet
 
-load_dotenv()
-
-
-def load_wallets(file_path="wallets.txt"):
-    wallets = {}
-    if not os.path.exists(file_path):
-        print(f"⚠️ Файл {file_path} не знайдено.")
-        return wallets
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            system, addresses = line.split("=", 1)
-            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
-    return wallets
-
-
-wallets = load_wallets()
-TOKEN = wallets.get("PRIVAT")[0]
 
 BASE_URL = "https://acp.privatbank.ua/api/statements/transactions"
-HEADERS = {
-    "User-Agent": "MyApp/1.0",
-    "token": TOKEN,
-    "Content-Type": "application/json;charset=cp1251"
-}
 
 
-def fetch_transactions(start_date: str, end_date: str, limit: int = 100) -> list:
+def fetch_transactions(api_token, start_date: str, end_date: str, limit: int = 100) -> list:
+    headers = {
+        "User-Agent": "MyApp/1.0",
+        "token": api_token,
+        "Content-Type": "application/json;charset=cp1251"
+    }
     params = {
         "startDate": start_date,
         "endDate": end_date,
@@ -44,7 +23,7 @@ def fetch_transactions(start_date: str, end_date: str, limit: int = 100) -> list
     all_transactions = []
 
     while True:
-        response = requests.get(BASE_URL, headers=HEADERS, params=params)
+        response = requests.get(BASE_URL, headers=headers, params=params)
 
         if response.status_code != 200:
             print("❌ Помилка запиту:", response.status_code)
@@ -128,8 +107,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
             rows_to_append.append(new_row)
 
     if rows_to_update:
-        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in
-                      rows_to_update]
+        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
         worksheet.batch_update(batch_data)
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
@@ -141,9 +119,22 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
         print("✅ Нових транзакцій немає.")
 
 
-def privat(start_date="01-06-2025", end_date="20-06-2025"):
-    print(f"🕐 Отримуємо транзакції з {start_date} по {end_date}...")
-    transactions = fetch_transactions(start_date, end_date)
-    save_transactions_to_json(transactions, filename="privat_transactions.json")
+def privat_export(start_date="01-06-2025", end_date="20-06-2025"):
+    tokens = CONFIG.get("PRIVAT", [])
+    if not tokens:
+        print("❌ У конфігурації немає PRIVAT токенів.")
+        return
+
     worksheet = init_google_sheet()
-    write_privat_transactions_to_sheet(worksheet, transactions)
+
+    for entry in tokens:
+        api_token = entry.get("api_token")
+        if not api_token:
+            continue
+        print(f"🕐 Обробка токена PRIVAT...")
+        transactions = fetch_transactions(api_token, start_date, end_date)
+        save_transactions_to_json(transactions, filename="privat_transactions.json")
+        write_privat_transactions_to_sheet(worksheet, transactions)
+
+
+

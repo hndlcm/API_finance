@@ -1,24 +1,9 @@
 import requests
 import time
 import json
-import os
-from dotenv import load_dotenv
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime, timedelta
+from datetime import datetime
+from config import CONFIG
 from table import init_google_sheet
-
-
-def load_wallets(file_path="wallets.txt"):
-    wallets = {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            system, addresses = line.split("=", 1)
-            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
-    return wallets
 
 
 def format_amount(value):
@@ -37,11 +22,15 @@ def format_date(date_str):
 
 
 def get_all_payment_statuses(start_date: str, end_date: str):
-    load_dotenv()
+    PORTMONE_CFG = CONFIG.get("PORTMONE", {})
     PORTMONE_URL = "https://www.portmone.com.ua/gateway/"
-    PAYEE_ID = os.getenv("PAYEE_ID")
-    LOGIN = os.getenv("PORTMONE_LOGIN")
-    PASSWORD = os.getenv("PORTMONE_PASSWORD")
+    PAYEE_ID = PORTMONE_CFG.get("payee_id")
+    LOGIN = PORTMONE_CFG.get("login")
+    PASSWORD = PORTMONE_CFG.get("password")
+
+    if not (PAYEE_ID and LOGIN and PASSWORD):
+        print("❌ В конфігурації не задані дані Portmone (login, password, payee_id)")
+        return []
 
     payload = {
         "method": "result",
@@ -67,7 +56,6 @@ def get_all_payment_statuses(start_date: str, end_date: str):
         with open("portmone_all_orders.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
-        # В залежності від формату відповіді, вертаємо список замовлень
         if isinstance(data, dict) and "result" in data:
             return data["result"]
         elif isinstance(data, list):
@@ -79,6 +67,7 @@ def get_all_payment_statuses(start_date: str, end_date: str):
         error_data = {"status": "error", "message": str(e)}
         with open("portmone_error.json", "w", encoding="utf-8") as f:
             json.dump(error_data, f, ensure_ascii=False, indent=4)
+        print(f"❌ Помилка запиту Portmone: {e}")
         return []
 
 
@@ -126,7 +115,6 @@ def write_orders_to_sheet(worksheet, orders: list):
         else:
             rows_to_append.append(new_row)
 
-    # --- Оновлення рядків через batch_update ---
     if rows_to_update:
         batch_data = [
             {
@@ -138,7 +126,6 @@ def write_orders_to_sheet(worksheet, orders: list):
         worksheet.batch_update(batch_data)
         print(f"🔁 Оновлено {len(rows_to_update)} рядків.")
 
-    # --- Додавання нових ---
     if rows_to_append:
         start_row = len(existing_rows) + 1
         worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
@@ -151,3 +138,6 @@ def export_portmone_orders(start_date: str, end_date: str):
     worksheet = init_google_sheet()
     orders = get_all_payment_statuses(start_date, end_date)
     write_orders_to_sheet(worksheet, orders)
+
+
+

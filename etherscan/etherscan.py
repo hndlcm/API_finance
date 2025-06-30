@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
-
+from config import CONFIG
 
 def load_wallets(file_path="wallets.txt"):
     wallets = {}
@@ -38,16 +38,14 @@ def format_amount(value):
 
 def export_erc20_to_google_sheet():
     # --- Авторизація Google Sheets ---
+    sheet_conf = CONFIG["google_sheet"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
     client = gspread.authorize(creds)
-    spreadsheet = client.open_by_url(
-        "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing")
-    worksheet = spreadsheet.worksheet("Аркуш1")
+    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
+    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
 
-    # --- Завантажуємо адреси + ключі ---
-    wallets = load_wallets()
-    erc20_data = wallets.get("ERC20", [])
+    erc20_data = CONFIG.get("ERC20", [])
 
     existing_rows = worksheet.get_all_values()
     header_offset = 1
@@ -63,11 +61,11 @@ def export_erc20_to_google_sheet():
 
     for entry in erc20_data:
         address = entry["address"]
-        api_key = entry["apikey"]
+        api_key = entry["api_key"]
         page = 1
         all_transactions = []
 
-        print(f"\n🔍 Обробка адреси {address}")
+        print(f"\n🔍 Обробка адреси {address} ({entry.get('name', '')})")
 
         while True:
             url = (
@@ -113,6 +111,7 @@ def export_erc20_to_google_sheet():
             row = [""] * 25
             row[0] = timestamp
             row[1] = "ERC20"
+            row[2] = entry.get("name", "")
             row[3] = address
             row[4] = type_operation
             row[5] = formatted_amount

@@ -1,22 +1,9 @@
 import requests
 import json
-import os
 from datetime import datetime
-from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-
-
-def load_wallets(file_path="wallets.txt"):
-    wallets = {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            system, addresses = line.split("=", 1)
-            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
-    return wallets
+from config import CONFIG
 
 
 def format_date(date_str):
@@ -27,14 +14,12 @@ def format_date(date_str):
         return date_str
 
 
-def export_fakturownia_invoices_to_google_sheets(worksheet, api_token=None):
-    load_dotenv()
-    API_TOKEN = api_token or os.getenv("FACTUROWNIA") or os.getenv("FACTUROWNIA") or os.getenv("FACTUROWNIA")
+def export_fakturownia_invoices_to_google_sheets(worksheet, api_token):
     BASE_URL = "https://orgwa.fakturownia.pl"
 
     def get_invoices(page=1):
         url = f"{BASE_URL}/invoices.json"
-        params = {"api_token": API_TOKEN, "page": page}
+        params = {"api_token": api_token, "page": page}
         response = requests.get(url, params=params)
         if response.status_code == 200:
             return response.json()
@@ -109,20 +94,22 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token=None):
         print("✅ Нових інвойсів для додавання немає.")
 
 
-def export_invoices_to_google_sheets():
+def export_fakturownia_all_to_google_sheets():
+    sheet_conf = CONFIG["google_sheet"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
     client = gspread.authorize(creds)
-    spreadsheet = client.open_by_url(
-        "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing")
-    worksheet = spreadsheet.worksheet("Аркуш1")
+    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
+    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
 
-    wallets = load_wallets()
+    fakturownia_entries = CONFIG.get("FACTUROWNIA", [])
+    if not fakturownia_entries:
+        print("⚠️ Немає токенів Fakturownia в конфігурації.")
+        return
 
-    if "FACTUROWNIA" in wallets:
-        for token in wallets["FACTUROWNIA"]:
-            print(f"Обробка токена: {token}")
-            export_fakturownia_invoices_to_google_sheets(worksheet, api_token=token)
-
+    for entry in fakturownia_entries:
+        token = entry["api_token"]
+        print(f"📡 Обробка токена: {token[:6]}...")  # Безпечно обрізати токен
+        export_fakturownia_invoices_to_google_sheets(worksheet, token)
 
 

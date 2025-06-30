@@ -1,26 +1,9 @@
 import requests
-import time
 import json
-import os
 from datetime import datetime
-from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-
-
-def load_wallets(file_path="wallets.txt"):
-    wallets = {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            system, addresses = line.split("=", 1)
-            # Парсимо не просто список адрес через кому, а список через ;
-            # І кожен елемент може бути "address,token" або просто "address"
-            entries = [x.strip() for x in addresses.split(";") if x.strip()]
-            wallets[system.strip().upper()] = entries
-    return wallets
+from config import CONFIG
 
 
 def format_amount(value):
@@ -38,14 +21,12 @@ def format_date(date_str):
         return date_str
 
 
-def export_bitfactura_invoices_to_google_sheets(worksheet, api_token=None):
-    load_dotenv()
-    API_TOKEN = api_token or os.getenv("BITFACTURA") or os.getenv("BITFACTURA") or os.getenv("BITFACTURA")
+def export_bitfactura_invoices_to_google_sheets(worksheet, api_token):
     BASE_URL = "https://handleua.bitfaktura.com.ua"
 
     def get_invoices(page=1):
         url = f"{BASE_URL}/invoices.json"
-        params = {"api_token": API_TOKEN, "page": page}
+        params = {"api_token": api_token, "page": page}
         response = requests.get(url, params=params)
         if response.status_code == 200:
             return response.json()
@@ -54,10 +35,6 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token=None):
             return []
 
     invoices = get_invoices()
-
-    with open("invoices.json", "w", encoding="utf-8") as f:
-        json.dump(invoices, f, ensure_ascii=False, indent=2)
-    print(f"✅ Збережено {len(invoices)} інвойсів у файл invoices.json")
 
     existing_rows = worksheet.get_all_values()
     header_offset = 1
@@ -75,6 +52,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token=None):
         row = [""] * 17
         row[0] = format_date(invoice.get("updated_at", ""))
         row[1] = "bitfaktura"
+        # row[2] — тут був name, ми його пропускаємо
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
         amount = invoice.get("price_gross", 0)
@@ -107,18 +85,21 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token=None):
         print("✅ Нових інвойсів для додавання немає.")
 
 
-def export_invoices_to_google_sheets_bit():
+def export_bitfactura_all_to_google_sheets():
     # Авторизація Google Sheets
+    sheet_conf = CONFIG["google_sheet"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
     client = gspread.authorize(creds)
-    spreadsheet = client.open_by_url(
-        "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing")
-    worksheet = spreadsheet.worksheet("Аркуш1")
+    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
+    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
 
-    wallets = load_wallets()
-    # Якщо хочеш, можна розширити на декілька платіжних систем
-    if "BITFACTURA" in wallets:
-        for token in wallets["BITFACTURA"]:
-            export_bitfactura_invoices_to_google_sheets(worksheet, api_token=token)
+    bitfactura_entries = CONFIG.get("BITFACTURA", [])
+    if not bitfactura_entries:
+        print("⚠️ Немає підключених Bitfaktura акаунтів у конфігурації.")
+        return
+
+    for entry in bitfactura_entries:
+        token = entry["api_token"]
+        export_bitfactura_invoices_to_google_sheets(worksheet, token)
 

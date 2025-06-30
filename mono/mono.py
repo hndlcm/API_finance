@@ -1,106 +1,86 @@
-import os
 import time
 import json
 import requests
 from datetime import datetime
-from dotenv import load_dotenv
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from table import init_google_sheet
-
-load_dotenv()
+from config import CONFIG
 
 
-def load_wallets(file_path="wallets.txt"):
-    wallets = {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            system, addresses = line.split("=", 1)
-            wallets[system.strip().upper()] = [addr.strip() for addr in addresses.split(",") if addr.strip()]
-    return wallets
+def format_date(timestamp):
+    try:
+        return datetime.fromtimestamp(timestamp).strftime("%d.%m.%Y %H:%M:%S")
+    except Exception:
+        return ""
 
 
-wallets = load_wallets()
-TOKEN = wallets.get("MONO")[0]
-BASE_URL = 'https://api.monobank.ua/personal/statement/{account}/{from_time}/{to_time}'
-HEADERS = {'X-Token': TOKEN}
+def init_google_sheet():
+    sheet_conf = CONFIG["google_sheet"]
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
+    client = gspread.authorize(creds)
+    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
+    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
+    return worksheet
 
 
-def info_client():
-    URL = 'https://api.monobank.ua/personal/client-info'
-    response = requests.get(URL, headers=HEADERS)
+def info_client(api_token):
+    url = "https://api.monobank.ua/personal/client-info"
+    headers = {"X-Token": api_token}
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
         with open('monobank_client_info.json', 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print("✅ Дані збережено в monobank_client_info.json")
+        print("✅ Дані клієнта збережено у monobank_client_info.json")
         return data
     else:
-        print(f"❌ Error {response.status_code}: {response.text}")
+        print(f"❌ Помилка при отриманні info: {response.status_code} {response.text}")
         return None
 
 
-def get_monobank_statements(account, from_time, to_time):
-    all_transactions = []
-    while True:
-        url = BASE_URL.format(account=account, from_time=from_time, to_time=to_time)
-        print(f"GET: {url}")
-        response = requests.get(url, headers=HEADERS)
-        if response.status_code != 200:
-            print(f"❌ Error {response.status_code}: {response.text}")
-            break
-        transactions = response.json()
-        all_transactions.extend(transactions)
-        if len(transactions) < 500:
-            break
-        last_tx_time = transactions[-1]['time']
-        to_time = last_tx_time
-        time.sleep(60)
-    return all_transactions
+def get_monobank_statements(api_token, account, from_time, to_time):
+    url = f'https://api.monobank.ua/personal/statement/{account}/{from_time}/{to_time}'
+    headers = {'X-Token': api_token}
+    print(f"GET: {url}")
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        print(f"❌ Помилка {response.status_code}: {response.text}")
+        return []
+    return response.json()
 
 
-def save_monobank_transactions_to_json(account_id, days_back=183, filename='monobank_transactions.json'):
+def save_monobank_transactions_to_json(api_token, account_id, days_back=183, filename=None):
     current_time = int(time.time())
     from_time = current_time - days_back * 24 * 60 * 60
     to_time = current_time
     max_range_seconds = 2682000  # 31 день + 1 година
 
     all_transactions = []
-    print(f"📅 Починаємо завантаження транзакцій за останні {days_back} днів...")
+    print(f"📅 Завантаження транзакцій за останні {days_back} днів...")
 
     while from_time < to_time:
         chunk_to_time = min(from_time + max_range_seconds, to_time)
-        print(
-            f"📦 Отримуємо транзакції з {datetime.fromtimestamp(from_time)} до {datetime.fromtimestamp(chunk_to_time)}")
-        try:
-            chunk_transactions = get_monobank_statements(account_id, from_time, chunk_to_time)
-            all_transactions.extend(chunk_transactions)
-        except Exception as e:
-            print(f"❌ Помилка при запиті: {e}")
+        print(f"📦 Отримуємо транзакції з {datetime.fromtimestamp(from_time)} до {datetime.fromtimestamp(chunk_to_time)}")
+        chunk_transactions = get_monobank_statements(api_token, account_id, from_time, chunk_to_time)
+        if not chunk_transactions:
             break
+        all_transactions.extend(chunk_transactions)
         from_time = chunk_to_time
         if from_time < to_time:
             print("⏳ Очікуємо 60 секунд через ліміт Mono API...")
             time.sleep(60)
 
+    filename = filename or f"mono_{account_id}.json"
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(all_transactions, f, ensure_ascii=False, indent=4)
 
-    print(f"✅ Успішно збережено {len(all_transactions)} транзакцій у {filename}")
+    print(f"✅ Збережено {len(all_transactions)} транзакцій у {filename}")
     return all_transactions
 
 
-def write_monobank_transactions_to_sheet(account_id, worksheet, transactions: list):
-    try:
-        existing_rows = worksheet.get_all_values()
-    except Exception:
-        print("⚠️ Зачекай 60 секунд (Rate Limit)...")
-        time.sleep(60)
-        existing_rows = worksheet.get_all_values()
-
+def write_monobank_transactions_to_sheet(account_id, worksheet, transactions):
+    existing_rows = worksheet.get_all_values()
     header_offset = 1
     existing_tx_by_id = {}
     for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
@@ -112,7 +92,7 @@ def write_monobank_transactions_to_sheet(account_id, worksheet, transactions: li
 
     for tx in transactions:
         new_row = [""] * 25
-        tx_time = datetime.fromtimestamp(tx.get("time", 0)).strftime("%d.%m.%Y %H:%M:%S")
+        tx_time = format_date(tx.get("time", 0))
         description = tx.get("description", "")
         amount = tx.get("amount", 0)
         currency_code = tx.get("currencyCode", 980)
@@ -145,8 +125,7 @@ def write_monobank_transactions_to_sheet(account_id, worksheet, transactions: li
             rows_to_append.append(new_row)
 
     if rows_to_update:
-        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in
-                      rows_to_update]
+        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
         worksheet.batch_update(batch_data)
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
@@ -158,32 +137,50 @@ def write_monobank_transactions_to_sheet(account_id, worksheet, transactions: li
         print("✅ Нових транзакцій немає.")
 
 
-def mono():
-    wallets = load_wallets()
-    if "MONO" not in wallets:
-        print("❌ У wallets.txt немає запису MONO")
+def mono_export():
+    tokens = CONFIG.get("MONO", [])
+    if not tokens:
+        print("❌ У конфігурації немає MONO токенів.")
         return
 
-    worksheet = init_google_sheet()  # Припускаю, що ти так ініціалізуєш лист
+    worksheet = init_google_sheet()
 
-    client_info = info_client()
-    if not client_info:
-        print("❌ Не вдалося отримати інформацію про клієнта.")
-        return
-
-    accounts = client_info.get("accounts", [])
-    if not accounts:
-        print("❌ У клієнта не знайдено жодного рахунку.")
-        return
-
-    for account in accounts:
-        account_id = account.get("id")
-        iban = account.get("iban", "")
-        if not account_id:
-            print("❌ Не вдалося отримати ID рахунку.")
+    for entry in tokens:
+        api_token = entry.get("api_token")
+        if not api_token:
             continue
 
-        print(f"\n📘 Опрацьовується рахунок: {account_id}")
-        transactions = save_monobank_transactions_to_json(account_id=account_id, days_back=183,
-                                                          filename=f"mono_{account_id}.json")
-        write_monobank_transactions_to_sheet(iban, worksheet, transactions)
+        client_info = info_client(api_token)
+        if not client_info:
+            print("❌ Не вдалося отримати інформацію про клієнта.")
+            continue
+
+        accounts = client_info.get("accounts", [])
+        if not accounts:
+            print("❌ У клієнта немає рахунків.")
+            continue
+
+        for account in accounts:
+            account_id = account.get("id")
+            iban = account.get("iban", "")
+            if not account_id:
+                print("❌ Не вдалося отримати ID рахунку.")
+                continue
+
+            print(f"\n📘 Опрацьовується рахунок: {account_id} (IBAN: {iban})")
+            transactions = save_monobank_transactions_to_json(api_token, account_id, days_back=183, filename=f"mono_{account_id}.json")
+            write_monobank_transactions_to_sheet(iban, worksheet, transactions)
+
+
+def init_google_sheet():
+    # Ініціалізація листа з конфігурації
+    sheet_conf = CONFIG["google_sheet"]
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
+    client = gspread.authorize(creds)
+    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
+    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
+    return worksheet
+
+
+

@@ -1,61 +1,32 @@
-import requests
 import time
 import json
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+import requests
 from datetime import datetime
+from config import CONFIG
+from table import init_google_sheet
 
 
 def format_amount(value):
     try:
-        return round(float(value), 2)
+        return round(float(value), 6)
     except (ValueError, TypeError):
-        return 0.00
-
-
-def load_wallets(file_path="wallets.txt"):
-    wallets = {}
-    with open(file_path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line or "=" not in line:
-                continue
-            system, data = line.split("=", 1)
-            system = system.strip()
-            entries = [x.strip() for x in data.split(";") if x.strip()]
-            wallets[system] = []
-            for entry in entries:
-                # Кожен запис у вигляді "address,apikey"
-                parts = [x.strip() for x in entry.split(",")]
-                if len(parts) == 2:
-                    wallets[system].append({"address": parts[0], "apikey": parts[1]})
-                else:
-                    print(f"⚠️ Помилка формату для {system}: {entry}")
-    return wallets
+        return 0.0
 
 
 def export_trc20_transactions_troscan_to_google_sheets():
-    # Авторизація Google Sheets
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("api-finanse-de717294db0b.json", scope)
-    client = gspread.authorize(creds)
-    spreadsheet = client.open_by_url(
-        "https://docs.google.com/spreadsheets/d/1Fg9Fo4TLqc0KYbC_GHBRccFZg8a5g9NJPfyMoSLSKM8/edit?usp=sharing"
-    )
-    worksheet = spreadsheet.worksheet("Аркуш1")
-
-    # --- Завантажуємо адреси + ключі ---
-    wallets = load_wallets()
-    trc20_data = wallets.get("ERC20", [])
-
-    if not trc20_data:
-        print("⚠️ TRC20 адреси не знайдено у wallets.txt")
+    erc20_data = CONFIG.get("TRC20", [])
+    if not erc20_data:
+        print("⚠️ TRC20 адреси у конфігурації не знайдено.")
         return
+
+    worksheet = init_google_sheet()
 
     all_transactions = []
 
-    for item in trc20_data:
-        address = item["address"]
+    for item in erc20_data:
+        address = item.get("address")
+        if not address:
+            continue
         print(f"\n📥 Обробка TRC20 адреси: {address}")
         limit = 50
         start = 0
@@ -85,7 +56,6 @@ def export_trc20_transactions_troscan_to_google_sheets():
             start += limit
             time.sleep(0.4)
 
-    # Зберігаємо всі транзакції
     with open("trc20_transactions.json", "w", encoding="utf-8") as f:
         json.dump(all_transactions, f, ensure_ascii=False, indent=2)
     print("💾 Дані збережено у файл trc20_transactions.json")
@@ -104,7 +74,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
 
     for tx in all_transactions:
         address = tx.get("__wallet_address__")
-        address_lower = address.lower()
+        address_lower = address.lower() if address else ""
 
         timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d.%m.%Y %H:%M:%S")
         token = tx.get("token_info", {}).get("symbol", "")
@@ -152,6 +122,3 @@ def export_trc20_transactions_troscan_to_google_sheets():
         print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
     else:
         print("✅ Нових транзакцій для додавання немає.")
-
-
-

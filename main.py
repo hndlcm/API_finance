@@ -1,12 +1,12 @@
 import time
 from datetime import datetime, timedelta
-from facturow.factura import export_invoices_to_google_sheets
-from facturow.bitfactura import export_invoices_to_google_sheets_bit
+from facturow.factura import export_fakturownia_all_to_google_sheets
+from facturow.bitfactura import export_bitfactura_invoices_to_google_sheets
 from etherscan.etherscan import export_erc20_to_google_sheet
 from tronscan.transactions import export_trc20_transactions_troscan_to_google_sheets
 from check_payment_status import export_portmone_orders
-from mono.mono import mono
-from privat.privat import privat
+from mono.mono import mono_export
+from privat.privat import privat_export
 
 
 def generate_date_ranges(start_date, end_date, delta_days=31):
@@ -19,32 +19,32 @@ def generate_date_ranges(start_date, end_date, delta_days=31):
 
 def main_loop():
     while True:
-        """        try:
+        try:
             print("🚀 Запускаємо експорт privat транзакцій...")
-            privat()
+            privat_export()
             print("✅ privat експорт завершено.\n")
         except Exception as e:
             print(f"❌ Помилка при експорті privat: {e}\n")
         try:
             print("🚀 Запускаємо експорт mono транзакцій...")
-            mono()
+            mono_export()
             print("✅ mono експорт завершено.\n")
         except Exception as e:
             print(f"❌ Помилка при експорті mono: {e}\n")
 
         try:
             print("🚀 Запускаємо експорт TRC20 транзакцій...")
-            export_invoices_to_google_sheets()
+            export_fakturownia_all_to_google_sheets()
             print("✅ TRC20 експорт завершено.\n")
         except Exception as e:
             print(f"❌ Помилка при експорті TRC20: {e}\n")
 
         try:
             print("🚀 Запускаємо експорт інвойсів Bitfactura...")
-            export_invoices_to_google_sheets_bit()
+            export_bitfactura_invoices_to_google_sheets()
             print("✅ Експорт інвойсів завершено.\n")
         except Exception as e:
-            print(f"❌ Помилка при експорті Bitfactura: {e}\n")"""
+            print(f"❌ Помилка при експорті Bitfactura: {e}\n")
 
         try:
             export_erc20_to_google_sheet()
