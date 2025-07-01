@@ -1,8 +1,8 @@
 import time
 import requests
 from datetime import datetime, timedelta
-from config import CONFIG
 from table import init_google_sheet
+from config_manager import CONFIG, config_manager  
 
 
 def format_amount(value):
@@ -25,19 +25,16 @@ def export_trc20_transactions_troscan_to_google_sheets():
         if not address:
             continue
 
-        # Отримуємо дату з конфігу, або ставимо сьогодні
+        # Визначаємо діапазон дат для запиту
         date_str = item.get("data")
-        if not date_str:
+        try:
+            config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
+        except Exception:
+            print(f"❌ Невірний формат дати в конфігу: {date_str}, використовую сьогоднішню дату")
             config_date = datetime.now().date()
-        else:
-            try:
-                config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
-            except Exception:
-                print(f"❌ Невірний формат дати в конфігу: {date_str}, використовую сьогоднішню дату")
-                config_date = datetime.now().date()
 
         from_date = config_date - timedelta(days=5)
-        to_date = config_date
+        to_date = datetime.now().date()
 
         print(f"\n📥 Обробка TRC20 адреси: {address}, діапазон дат: {from_date} - {to_date}")
 
@@ -62,29 +59,28 @@ def export_trc20_transactions_troscan_to_google_sheets():
                 print("✅ Усі TRC20 транзакції отримано.")
                 break
 
-            # Фільтруємо транзакції по даті (timestamp у мс)
             filtered_txs = []
             for tx in transactions:
-                ts_date = datetime.fromtimestamp(tx["block_ts"] / 1000).date()
-                if from_date <= ts_date <= to_date:
+                tx_date = datetime.fromtimestamp(tx["block_ts"] / 1000).date()
+                if from_date <= tx_date <= to_date:
                     tx["__wallet_address__"] = address
                     filtered_txs.append(tx)
-                elif ts_date > to_date:
-                    # транзакції сортуються від найновіших, можна припинити
+                elif tx_date < from_date:
+                    # Так як транзакції ідуть за спаданням дати, можна завершувати цикл
                     break
 
             all_transactions.extend(filtered_txs)
 
             print(f"🔄 Отримано {len(filtered_txs)} транзакцій (загалом: {len(all_transactions)})")
 
-            if len(transactions) < limit or any(datetime.fromtimestamp(tx["block_ts"] / 1000).date() > to_date for tx in transactions):
+            # Якщо менше ліміту отримано або дійшли до транзакцій старіших від from_date - завершуємо
+            if len(transactions) < limit or any(datetime.fromtimestamp(tx["block_ts"] / 1000).date() < from_date for tx in transactions):
                 break
 
             start += limit
             time.sleep(0.4)
 
-        # Тепер оновлюємо Google Sheets
-
+        # Робота з Google Sheets
         existing_rows = worksheet.get_all_values()
         header_offset = 1
         existing_tx_by_hash = {}
@@ -97,8 +93,8 @@ def export_trc20_transactions_troscan_to_google_sheets():
         rows_to_update = []
         rows_to_append = []
 
+        address_lower = address.lower()
         for tx in all_transactions:
-            address_lower = address.lower()
             timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d.%m.%Y %H:%M:%S")
             token = tx.get("token_info", {}).get("symbol", "")
             method = "TRC20"
@@ -146,9 +142,10 @@ def export_trc20_transactions_troscan_to_google_sheets():
         else:
             print("✅ Нових транзакцій для додавання немає.")
 
-        # Оновлюємо дату в конфігу на сьогодні
         today_str = datetime.now().strftime("%d.%m.%Y")
         item["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
+    # Записуємо оновлений конфіг назад у файл
+    config_manager(CONFIG)
 

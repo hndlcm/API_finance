@@ -1,17 +1,15 @@
 import requests
 import time
 import json
-from datetime import datetime
-from config import CONFIG
+from datetime import datetime, timedelta
 from table import init_google_sheet
-
+from config_manager import CONFIG, config_manager  # Імпортуємо глобальний конфіг
 
 def format_amount(value):
     try:
         return round(float(value), 2)
     except (ValueError, TypeError):
         return 0.00
-
 
 def format_date(date_str):
     try:
@@ -20,9 +18,8 @@ def format_date(date_str):
     except Exception:
         return date_str
 
-
 def get_all_payment_statuses(start_date: str, end_date: str):
-    PORTMONE_CFG = CONFIG.get("PORTMONE", {})
+    PORTMONE_CFG = CONFIG.get("PORTMONE", [{}])[0]
     PORTMONE_URL = "https://www.portmone.com.ua/gateway/"
     PAYEE_ID = PORTMONE_CFG.get("payee_id")
     LOGIN = PORTMONE_CFG.get("login")
@@ -57,7 +54,13 @@ def get_all_payment_statuses(start_date: str, end_date: str):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
         if isinstance(data, dict) and "result" in data:
-            return data["result"]
+            if isinstance(data["result"], dict) and "orders" in data["result"]:
+                return data["result"]["orders"]
+            elif isinstance(data["result"], list):
+                return data["result"]
+            else:
+                print("❗️ Неочікуваний формат 'result' у відповіді Portmone")
+                return []
         elif isinstance(data, list):
             return data
         else:
@@ -69,7 +72,6 @@ def get_all_payment_statuses(start_date: str, end_date: str):
             json.dump(error_data, f, ensure_ascii=False, indent=4)
         print(f"❌ Помилка запиту Portmone: {e}")
         return []
-
 
 def write_orders_to_sheet(worksheet, orders: list):
     try:
@@ -117,10 +119,7 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     if rows_to_update:
         batch_data = [
-            {
-                "range": f"A{row_number}:Y{row_number}",
-                "values": [row_data]
-            }
+            {"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
             for row_number, row_data in rows_to_update
         ]
         worksheet.batch_update(batch_data)
@@ -129,15 +128,46 @@ def write_orders_to_sheet(worksheet, orders: list):
     if rows_to_append:
         start_row = len(existing_rows) + 1
         worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
-        print(f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}.")
+        print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
     else:
         print("✅ Нових транзакцій для додавання немає.")
 
-
-def export_portmone_orders(start_date: str, end_date: str):
+def export_portmone_orders_full():
     worksheet = init_google_sheet()
-    orders = get_all_payment_statuses(start_date, end_date)
-    write_orders_to_sheet(worksheet, orders)
 
+    portmone_config = CONFIG.get("PORTMONE", [{}])[0]
+    date_str = portmone_config.get("data")
 
+    try:
+        start = datetime.strptime(date_str, "%d.%m.%Y")
+    except Exception:
+        print(f"⚠️ Невірна дата в конфігу: {date_str}, використовую сьогодні - 5 днів")
+        start = datetime.now() - timedelta(days=5)
 
+    end = datetime.now()
+
+    max_days = 60
+    delta = timedelta(days=max_days)
+
+    current_start = start
+    while current_start < end:
+        current_end = min(current_start + delta, end)
+        start_str = current_start.strftime("%d.%m.%Y")
+        end_str = current_end.strftime("%d.%m.%Y")
+
+        print(f"🔄 Обробка періоду {start_str} - {end_str}")
+
+        orders = get_all_payment_statuses(start_str, end_str)
+        if isinstance(orders, list):
+            write_orders_to_sheet(worksheet, orders)
+        else:
+            print(f"❌ Неочікуваний формат замовлень за період {start_str} - {end_str}")
+
+        current_start = current_end + timedelta(days=1)
+        time.sleep(1)
+
+    # ✅ Оновлення дати в конфігурації
+    today_str = datetime.now().strftime("%d.%m.%Y")
+    CONFIG["PORTMONE"][0]["data"] = today_str
+    config_manager(CONFIG)
+    print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")

@@ -2,7 +2,7 @@ import requests
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config import CONFIG
+from config_manager import CONFIG, config_manager  
 
 
 def format_amount(value):
@@ -40,6 +40,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
             invoices = get_invoices(page)
             if not invoices:
                 break
+
             if from_date or to_date:
                 filtered = []
                 for inv in invoices:
@@ -55,6 +56,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
 
             all_invoices.extend(invoices)
             print(f"✅ Отримано сторінку {page} — {len(invoices)} інвойсів")
+
             if len(invoices) < 100:
                 break
             page += 1
@@ -78,7 +80,6 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
         row = [""] * 17
         row[0] = format_date(invoice.get("updated_at", ""))
         row[1] = "bitfaktura"
-        # row[2] пропускаємо
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
         amount = invoice.get("price_gross", 0)
@@ -137,7 +138,7 @@ def export_bitfactura_all_to_google_sheets():
                 config_date = datetime.now().date()
 
         from_date = config_date - timedelta(days=5)
-        to_date = config_date
+        to_date = datetime.now().date()
 
         print(f"📡 Обробка токена: {token[:6]}..., діапазон дат: {from_date} - {to_date}")
 
@@ -146,4 +147,7 @@ def export_bitfactura_all_to_google_sheets():
         today_str = datetime.now().strftime("%d.%m.%Y")
         entry["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
+
+    # Записуємо оновлений конфіг назад у файл
+    config_manager(CONFIG)
 

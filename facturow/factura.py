@@ -2,7 +2,7 @@ import requests
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config import CONFIG
+from config_manager import CONFIG, config_manager  
 
 
 def format_date(date_str):
@@ -43,6 +43,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
             invoices = get_invoices(page)
             if not invoices:
                 break
+
             if from_date or to_date:
                 filtered = []
                 for inv in invoices:
@@ -58,6 +59,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
 
             all_invoices.extend(invoices)
             print(f"✅ Отримано сторінку {page} — {len(invoices)} інвойсів")
+
             if len(invoices) < 100:
                 break
             page += 1
@@ -124,7 +126,7 @@ def export_fakturownia_all_to_google_sheets():
         return
 
     for entry in fakturownia_entries:
-        token = entry["api_token"]
+        token = entry.get("api_token")
         date_str = entry.get("data")
         if not date_str:
             print("⚠️ Відсутня дата у конфігурації, використовуємо сьогодні")
@@ -137,16 +139,16 @@ def export_fakturownia_all_to_google_sheets():
                 config_date = datetime.now().date()
 
         from_date = config_date - timedelta(days=5)
-        to_date = config_date
+        to_date = datetime.now().date()
 
         print(f"📡 Обробка токена: {token[:6]}..., діапазон дат: {from_date} - {to_date}")
 
         export_fakturownia_invoices_to_google_sheets(worksheet, token, from_date=from_date, to_date=to_date)
 
         today_str = datetime.now().strftime("%d.%m.%Y")
-        entry["data"] = today_str
+        item["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
+    # Записуємо оновлений конфіг назад у файл
+    config_manager(CONFIG)
 
-if __name__ == "__main__":
-    export_fakturownia_all_to_google_sheets()

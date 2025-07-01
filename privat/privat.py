@@ -2,9 +2,8 @@ import time
 import json
 import requests
 from datetime import datetime, timedelta
-from config import CONFIG
 from table import init_google_sheet
-
+from config_manager import CONFIG, config_manager  
 
 BASE_URL_TRANSACTIONS = "https://acp.privatbank.ua/api/statements/transactions"
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
@@ -114,8 +113,14 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
         new_row[1] = "privatbank"
         new_row[3] = tx.get("AUT_MY_ACC", "")
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
-        new_row[5] = float(tx.get("SUM", "0").replace(",", "."))
-        new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))
+        try:
+            new_row[5] = float(tx.get("SUM", "0").replace(",", "."))
+        except Exception:
+            new_row[5] = 0.0
+        try:
+            new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))
+        except Exception:
+            new_row[6] = 0.0
         new_row[7] = tx.get("CCY", "UAH")
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
@@ -148,24 +153,21 @@ def update_balances_in_sheet(worksheet, balances: list):
     print("\n📊 Оновлення балансів у таблиці...")
     existing_rows = worksheet.get_all_values()
 
-    # Індекс колонки для рахунку та балансу
-    acc_col = 3  # 0-based index 3 => 4 колонка у таблиці (A=0)
-    balance_col = 9  # 0-based index 9 => 10 колонка у таблиці
+    acc_col = 3  # індекс колонки з рахунком
+    balance_col = 9  # індекс колонки з балансом
 
     rows_to_update = []
 
-    # Створюємо словник для швидкого пошуку рядків за номером рахунку
     acc_to_row = {}
     for i, row in enumerate(existing_rows):
         if len(row) > acc_col and row[acc_col]:
-            acc_to_row[row[acc_col]] = i + 1  # gspread row numbering починається з 1
+            acc_to_row[row[acc_col]] = i + 1  # gspread індексація з 1
 
     for bal in balances:
         acc = bal.get("acc", "")
         balance = bal.get("balanceOut", "0.00")
         if acc in acc_to_row:
             row_number = acc_to_row[acc]
-            # Оновимо значення балансу у відповідній колонці
             rows_to_update.append({
                 "range": f"{chr(ord('A') + balance_col)}{row_number}",
                 "values": [[balance]]
@@ -177,16 +179,6 @@ def update_balances_in_sheet(worksheet, balances: list):
         print(f"✅ Оновлено баланси у {len(rows_to_update)} рядках.")
     else:
         print("⚠️ Не знайдено рахунків для оновлення балансу.")
-
-
-def wait_until_9am():
-    now = datetime.now()
-    target_time = now.replace(hour=9, minute=0, second=0, microsecond=0)
-    if now >= target_time:
-        target_time += timedelta(days=1)
-    wait_seconds = (target_time - now).total_seconds()
-    print(f"⏳ Чекаємо {int(wait_seconds)} секунд до 9:00...")
-    time.sleep(wait_seconds)
 
 
 def privat_export():
@@ -201,39 +193,32 @@ def privat_export():
         api_token = entry.get("api_token")
         date_str = entry.get("data")
 
-        if not api_token or not date_str:
-            print("⚠️ Пропущено через відсутність токена або дати")
+        if not api_token:
+            print("⚠️ Пропущено через відсутність токена")
             continue
 
         try:
-            start_dt = datetime.strptime(date_str, "%d.%m.%Y")
-        except ValueError:
-            print(f"❌ Неправильний формат дати: {date_str}")
-            continue
+            config_date = datetime.strptime(date_str, "%d.%m.%Y") if date_str else datetime.now()
+        except Exception:
+            print(f"❌ Невірний формат дати в конфігу: {date_str}, використовую сьогоднішню дату")
+            config_date = datetime.now()
 
-        start_date = start_dt.strftime("%d-%m-%Y")
-        end_dt = start_dt + timedelta(days=1)
-        end_date = end_dt.strftime("%d-%m-%Y")
+        from_date = (config_date - timedelta(days=5)).strftime("%d-%m-%Y")
+        to_date = datetime.now().strftime("%d-%m-%Y")
 
-        print(f"\n📆 Обробка транзакцій з {start_date} до {end_date}")
-        transactions = fetch_transactions(api_token, start_date, end_date)
+        print(f"\n📆 Обробка транзакцій з {from_date} до {to_date}")
+
+        transactions = fetch_transactions(api_token, from_date, to_date)
         write_privat_transactions_to_sheet(worksheet, transactions)
 
         print("📈 Отримання фінальних балансів...")
         balances = fetch_balances(api_token)
         update_balances_in_sheet(worksheet, balances)
 
-        # Оновлюємо дату в конфігу, щоб наступного разу брати з нової дати
-        next_date_str = end_dt.strftime("%d.%m.%Y")
-        entry["data"] = next_date_str
-        print(f"📌 Оновлено дату в конфігу → {next_date_str}")
+        # Оновлюємо дату в конфігу на сьогодні
+        today_str = datetime.now().strftime("%d.%m.%Y")
+        entry["data"] = today_str
+        print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
-
-def daily_balance_update_loop():
-    while True:
-        wait_until_9am()
-        print(f"\n🕘 Починаємо оновлення балансу о {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        privat_export()
-
-
-    
+    # Записуємо оновлений конфіг назад у файл
+    config_manager(CONFIG)

@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config import CONFIG
+from config_manager import CONFIG, config_manager  
 
 
 def format_amount(value):
@@ -53,7 +53,7 @@ def export_erc20_to_google_sheet():
 
         # Віднімаємо 5 днів для початку інтервалу
         from_date = config_date - timedelta(days=5)
-        to_date = config_date
+        to_date = datetime.now().date() 
 
         print(f"\n🔍 Обробка адреси {address} ({entry.get('name', '')}), діапазон дат: {from_date} - {to_date}")
 
@@ -91,7 +91,7 @@ def export_erc20_to_google_sheet():
             print(f"🔄 Сторінка {page}: Отримано {len(filtered_transactions)} транзакцій (всього: {len(all_transactions)})")
 
             # Якщо на сторінці менше 100 транзакцій або дата в наступних не підходить — виходимо
-            if len(transactions) < 100 or any(datetime.utcfromtimestamp(int(tx.get("timeStamp",0))).date() > to_date for tx in transactions):
+            if len(transactions) < 100 or any(datetime.utcfromtimestamp(int(tx.get("timeStamp", 0))).date() > to_date for tx in transactions):
                 break
 
             page += 1
@@ -147,8 +147,10 @@ def export_erc20_to_google_sheet():
         else:
             print("✅ Нових транзакцій для додавання немає.")
 
-        # Оновлення дати в конфігу на сьогодні
         today_str = datetime.now().strftime("%d.%m.%Y")
         entry["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
+
+    # Записуємо оновлений конфіг назад у файл
+    config_manager(CONFIG)
 
