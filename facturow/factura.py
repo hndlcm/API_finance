@@ -1,6 +1,5 @@
 import requests
-import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from config import CONFIG
@@ -14,7 +13,17 @@ def format_date(date_str):
         return date_str
 
 
-def export_fakturownia_invoices_to_google_sheets(worksheet, api_token):
+def init_google_sheet():
+    sheet_conf = CONFIG["google_sheet"]
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
+    client = gspread.authorize(creds)
+    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
+    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
+    return worksheet
+
+
+def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date=None, to_date=None):
     BASE_URL = "https://orgwa.fakturownia.pl"
 
     def get_invoices(page=1):
@@ -34,17 +43,29 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token):
             invoices = get_invoices(page)
             if not invoices:
                 break
+            if from_date or to_date:
+                filtered = []
+                for inv in invoices:
+                    updated = inv.get("updated_at", "")
+                    if updated:
+                        inv_date = datetime.fromisoformat(updated.replace("Z", "+00:00")).date()
+                        if from_date and inv_date < from_date:
+                            continue
+                        if to_date and inv_date > to_date:
+                            continue
+                    filtered.append(inv)
+                invoices = filtered
+
             all_invoices.extend(invoices)
             print(f"✅ Отримано сторінку {page} — {len(invoices)} інвойсів")
+            if len(invoices) < 100:
+                break
             page += 1
         return all_invoices
 
     invoices = get_all_invoices()
 
-    with open("fakturownia_invoices.json", "w", encoding="utf-8") as f:
-        json.dump(invoices, f, ensure_ascii=False, indent=2)
-
-    print(f"\n💾 Збережено {len(invoices)} інвойсів у файл 'fakturownia_invoices.json'")
+    print(f"\n💾 Отримано загалом {len(invoices)} інвойсів")
 
     existing_rows = worksheet.get_all_values()
     header_offset = 1
@@ -95,12 +116,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token):
 
 
 def export_fakturownia_all_to_google_sheets():
-    sheet_conf = CONFIG["google_sheet"]
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
-    client = gspread.authorize(creds)
-    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
-    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
+    worksheet = init_google_sheet()
 
     fakturownia_entries = CONFIG.get("FACTUROWNIA", [])
     if not fakturownia_entries:
@@ -109,7 +125,28 @@ def export_fakturownia_all_to_google_sheets():
 
     for entry in fakturownia_entries:
         token = entry["api_token"]
-        print(f"📡 Обробка токена: {token[:6]}...")  # Безпечно обрізати токен
-        export_fakturownia_invoices_to_google_sheets(worksheet, token)
+        date_str = entry.get("data")
+        if not date_str:
+            print("⚠️ Відсутня дата у конфігурації, використовуємо сьогодні")
+            config_date = datetime.now().date()
+        else:
+            try:
+                config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
+            except Exception:
+                print(f"❌ Невірний формат дати: {date_str}, використовуємо сьогодні")
+                config_date = datetime.now().date()
+
+        from_date = config_date - timedelta(days=5)
+        to_date = config_date
+
+        print(f"📡 Обробка токена: {token[:6]}..., діапазон дат: {from_date} - {to_date}")
+
+        export_fakturownia_invoices_to_google_sheets(worksheet, token, from_date=from_date, to_date=to_date)
+
+        today_str = datetime.now().strftime("%d.%m.%Y")
+        entry["data"] = today_str
+        print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
 
+if __name__ == "__main__":
+    export_fakturownia_all_to_google_sheets()
