@@ -6,7 +6,7 @@ from etherscan.etherscan import export_erc20_to_google_sheet
 from tronscan.transactions import export_trc20_transactions_troscan_to_google_sheets
 from check_payment_status import export_portmone_orders
 from mono.mono import mono_export
-from privat.privat import privat_export
+from privat.privat import privat_export, daily_balance_update_loop
 
 
 def generate_date_ranges(start_date, end_date, delta_days=31):
@@ -22,6 +22,7 @@ def main_loop():
         try:
             print("🚀 Запускаємо експорт privat транзакцій...")
             privat_export()
+            daily_balance_update_loop()
             print("✅ privat експорт завершено.\n")
         except Exception as e:
             print(f"❌ Помилка при експорті privat: {e}\n")

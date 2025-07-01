@@ -1,7 +1,7 @@
 import time
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from config import CONFIG
@@ -50,14 +50,11 @@ def get_monobank_statements(api_token, account, from_time, to_time):
     return response.json()
 
 
-def save_monobank_transactions_to_json(api_token, account_id, days_back=183, filename=None):
-    current_time = int(time.time())
-    from_time = current_time - days_back * 24 * 60 * 60
-    to_time = current_time
-    max_range_seconds = 2682000  # 31 день + 1 година
-
+def save_monobank_transactions_to_json(api_token, account_id, from_time, to_time, filename=None):
+    max_range_seconds = 2682000  # 31 днів
     all_transactions = []
-    print(f"📅 Завантаження транзакцій за останні {days_back} днів...")
+
+    print(f"📅 Завантаження транзакцій з {datetime.fromtimestamp(from_time)} до {datetime.fromtimestamp(to_time)}")
 
     while from_time < to_time:
         chunk_to_time = min(from_time + max_range_seconds, to_time)
@@ -150,6 +147,17 @@ def mono_export():
         if not api_token:
             continue
 
+        # 🕒 Отримати дату з конфігу
+        date_str = entry.get("data")  # наприклад: "01.07.2025"
+        try:
+            dt = datetime.strptime(date_str, "%d.%m.%Y")
+        except Exception:
+            print(f"❌ Невірний формат дати: {date_str}")
+            continue
+
+        from_time = int(dt.timestamp())
+        to_time = int((dt + timedelta(days=1)).timestamp())
+
         client_info = info_client(api_token)
         if not client_info:
             print("❌ Не вдалося отримати інформацію про клієнта.")
@@ -168,19 +176,16 @@ def mono_export():
                 continue
 
             print(f"\n📘 Опрацьовується рахунок: {account_id} (IBAN: {iban})")
-            transactions = save_monobank_transactions_to_json(api_token, account_id, days_back=183, filename=f"mono_{account_id}.json")
+            transactions = save_monobank_transactions_to_json(
+                api_token, account_id, from_time, to_time, filename=f"mono_{account_id}.json"
+            )
             write_monobank_transactions_to_sheet(iban, worksheet, transactions)
 
-
-def init_google_sheet():
-    # Ініціалізація листа з конфігурації
-    sheet_conf = CONFIG["google_sheet"]
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
-    client = gspread.authorize(creds)
-    spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
-    worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
-    return worksheet
+        # 🗓️ Оновлення дати в пам'яті (не зберігається у файл)
+        next_day = (dt + timedelta(days=1)).strftime("%d.%m.%Y")
+        entry["data"] = next_day
+        print(f"📆 Наступна дата: {next_day}")
 
 
-
+if __name__ == "__main__":
+    mono_export()
