@@ -140,7 +140,7 @@ def export_mono_transactions_to_google_sheets():
                 new_row[11] = tx.get("counterName", "")
                 new_row[12] = tx.get("counterEdrpou", "")
                 new_row[13] = tx.get("counterIban", "")
-                new_row[14] = mcc
+                new_row[14] = tx.get("mcc", "")
                 new_row[15] = description
                 new_row[16] = tx_id
 
