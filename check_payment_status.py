@@ -146,7 +146,7 @@ def export_portmone_orders_full():
 
     end = datetime.now()
 
-    max_days = 60
+    max_days = 30
     delta = timedelta(days=max_days)
 
     current_start = start

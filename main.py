@@ -20,6 +20,13 @@ def generate_date_ranges(start_date, end_date, delta_days=31):
 def main_loop():
     while True:
         try:
+            print("🚀 Запускаємо експорт замовлень Portmone за останні 2 роки...")
+            export_portmone_orders_full()
+
+            print("✅ Експорт замовлень Portmone завершено.\n")
+        except Exception as e:
+            print(f"❌ Помилка при експорті Portmone: {e}\n")
+        try:
             print("🚀 Запускаємо експорт privat транзакцій...")
             privat_export()
             print("✅ privat експорт завершено.\n")
@@ -56,13 +63,7 @@ def main_loop():
         except Exception as e:
             print(f"❌ Помилка при експорті TRC20 Tronscan: {e}")
 
-        try:
-            print("🚀 Запускаємо експорт замовлень Portmone за останні 2 роки...")
-            export_portmone_orders_full()
 
-            print("✅ Експорт замовлень Portmone завершено.\n")
-        except Exception as e:
-            print(f"❌ Помилка при експорті Portmone: {e}\n")
 
         print("⏰ Чекаємо 1 годину до наступного запуску...\n")
         time.sleep(3600)

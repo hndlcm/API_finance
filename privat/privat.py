@@ -111,6 +111,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
 
         new_row[0] = tx_time_str
         new_row[1] = "privatbank"
+        new_row[2] = tx.get("PAYER_ULTMT_NAME")
         new_row[3] = tx.get("AUT_MY_ACC", "")
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
         try:

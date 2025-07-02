@@ -25,7 +25,6 @@ def export_trc20_transactions_troscan_to_google_sheets():
         if not address:
             continue
 
-        # Визначаємо діапазон дат для запиту
         date_str = item.get("data")
         try:
             config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
@@ -66,21 +65,18 @@ def export_trc20_transactions_troscan_to_google_sheets():
                     tx["__wallet_address__"] = address
                     filtered_txs.append(tx)
                 elif tx_date < from_date:
-                    # Так як транзакції ідуть за спаданням дати, можна завершувати цикл
                     break
 
             all_transactions.extend(filtered_txs)
 
             print(f"🔄 Отримано {len(filtered_txs)} транзакцій (загалом: {len(all_transactions)})")
 
-            # Якщо менше ліміту отримано або дійшли до транзакцій старіших від from_date - завершуємо
             if len(transactions) < limit or any(datetime.fromtimestamp(tx["block_ts"] / 1000).date() < from_date for tx in transactions):
                 break
 
             start += limit
             time.sleep(0.4)
 
-        # Робота з Google Sheets
         existing_rows = worksheet.get_all_values()
         header_offset = 1
         existing_tx_by_hash = {}
@@ -137,6 +133,12 @@ def export_trc20_transactions_troscan_to_google_sheets():
 
         if rows_to_append:
             start_row = len(existing_rows) + 1
+            needed_rows = start_row + len(rows_to_append)
+            current_max_rows = worksheet.row_count
+
+            if needed_rows > current_max_rows:
+                worksheet.add_rows(needed_rows - current_max_rows)
+
             worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
             print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
         else:
@@ -146,6 +148,4 @@ def export_trc20_transactions_troscan_to_google_sheets():
         item["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
-    # Записуємо оновлений конфіг назад у файл
     config_manager(CONFIG)
-

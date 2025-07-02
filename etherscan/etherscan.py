@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config_manager import CONFIG, config_manager  
+from config_manager import CONFIG, config_manager
 
 
 def format_amount(value):
@@ -41,7 +41,6 @@ def export_erc20_to_google_sheet():
         api_key = entry["api_key"]
         date_str = entry.get("data")
 
-        # Визначаємо дату з конфігу
         if not date_str:
             config_date = datetime.now().date()
         else:
@@ -51,9 +50,8 @@ def export_erc20_to_google_sheet():
                 print(f"❌ Невірний формат дати в конфігу: {date_str}, використовуємо сьогоднішню дату")
                 config_date = datetime.now().date()
 
-        # Віднімаємо 5 днів для початку інтервалу
         from_date = config_date - timedelta(days=5)
-        to_date = datetime.now().date() 
+        to_date = datetime.now().date()
 
         print(f"\n🔍 Обробка адреси {address} ({entry.get('name', '')}), діапазон дат: {from_date} - {to_date}")
 
@@ -76,7 +74,6 @@ def export_erc20_to_google_sheet():
             if not transactions:
                 break
 
-            # Фільтруємо транзакції по даті (timestamp у секундах)
             filtered_transactions = []
             for tx in transactions:
                 ts = int(tx.get("timeStamp", 0))
@@ -84,13 +81,11 @@ def export_erc20_to_google_sheet():
                 if from_date <= tx_date <= to_date:
                     filtered_transactions.append(tx)
                 elif tx_date > to_date:
-                    # Оскільки вони відсортовані, якщо дата більша за to_date — можна припинити обробку сторінок
                     break
 
             all_transactions.extend(filtered_transactions)
             print(f"🔄 Сторінка {page}: Отримано {len(filtered_transactions)} транзакцій (всього: {len(all_transactions)})")
 
-            # Якщо на сторінці менше 100 транзакцій або дата в наступних не підходить — виходимо
             if len(transactions) < 100 or any(datetime.utcfromtimestamp(int(tx.get("timeStamp", 0))).date() > to_date for tx in transactions):
                 break
 
@@ -142,15 +137,23 @@ def export_erc20_to_google_sheet():
         # Додавання нових
         if rows_to_append:
             start_row = len(existing_rows) + 1
-            worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
-            print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
+            end_row = start_row + len(rows_to_append) - 1
+
+            current_max_rows = worksheet.row_count
+            if end_row > current_max_rows:
+                rows_to_add = end_row - current_max_rows
+                worksheet.add_rows(rows_to_add)
+                print(f"➕ Додано {rows_to_add} нових рядків до аркуша.")
+
+            worksheet.update(f"A{start_row}:Y{end_row}", rows_to_append)
+            print(f"✅ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
         else:
             print("✅ Нових транзакцій для додавання немає.")
 
+        # Оновлення дати
         today_str = datetime.now().strftime("%d.%m.%Y")
         entry["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
-    # Записуємо оновлений конфіг назад у файл
+    # Запис змін у конфіг
     config_manager(CONFIG)
-

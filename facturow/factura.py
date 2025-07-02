@@ -146,7 +146,7 @@ def export_fakturownia_all_to_google_sheets():
         export_fakturownia_invoices_to_google_sheets(worksheet, token, from_date=from_date, to_date=to_date)
 
         today_str = datetime.now().strftime("%d.%m.%Y")
-        item["data"] = today_str
+        entry["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
     # Записуємо оновлений конфіг назад у файл
