@@ -77,7 +77,6 @@ def export_mono_transactions_to_google_sheets():
         for account in accounts:
             account_id = account.get("id")
             iban = account.get("iban", f"Mono-{account_id}")
-
             print(f"\n📥 Рахунок: {iban}, період: {from_dt.date()} - {to_dt.date()}")
 
             all_transactions = []
@@ -102,9 +101,8 @@ def export_mono_transactions_to_google_sheets():
                     break
 
                 chunk_start = chunk_end + timedelta(seconds=1)
-                time.sleep(1.5)
+                time.sleep(60)  # ⏳ затримка
 
-            # Отримуємо всі існуючі рядки з листа
             existing_rows = worksheet.get_all_values()
             header_offset = 1
             existing_tx_by_id = {}
@@ -132,7 +130,7 @@ def export_mono_transactions_to_google_sheets():
                 new_row = [""] * 25
                 new_row[0] = timestamp
                 new_row[1] = "monobank"
-                new_row[2] = client_name  # <-- тут підставляємо ім'я клієнта
+                new_row[2] = client_name
                 new_row[3] = iban
                 new_row[4] = type_op
                 new_row[5] = amount
@@ -155,7 +153,21 @@ def export_mono_transactions_to_google_sheets():
                 else:
                     rows_to_append.append(new_row)
 
+            if rows_to_update:
+                batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
+                              for row_number, row_data in rows_to_update]
+                worksheet.batch_update(batch_data)
+                print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
+
+            if rows_to_append:
+                start_row = len(existing_rows) + 1
+                worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
+                print(f"➕ Додано {len(rows_to_append)} нових транзакцій.")
+            else:
+                print("✅ Нових транзакцій немає.")
+
+        # ✅ Оновлюємо дату в конфігу
         today_str = datetime.now().strftime("%d.%m.%Y")
         item["data"] = today_str
-        print(f"📆 Оновлено дату: {today_str}")
         config_manager(CONFIG)
+        print(f"📆 Дата у конфігу оновлена: {today_str}")
