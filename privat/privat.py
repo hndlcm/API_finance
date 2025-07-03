@@ -82,7 +82,7 @@ def fetch_balances(api_token: str) -> list:
     return all_balances
 
 
-def write_privat_transactions_to_sheet(worksheet, transactions: list):
+def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict):
     try:
         existing_rows = worksheet.get_all_values()
     except Exception:
@@ -109,10 +109,11 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list):
         except Exception:
             tx_time_str = datetime_str.strip()
 
+        account = tx.get("AUT_MY_ACC", "")
         new_row[0] = tx_time_str
         new_row[1] = "privatbank"
-        new_row[2] = tx.get("PAYER_ULTMT_NAME")
-        new_row[3] = tx.get("AUT_MY_ACC", "")
+        new_row[2] = acc_name_map.get(account, "")  # <-- тут підставляємо назву рахунку
+        new_row[3] = account
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
         try:
             new_row[5] = float(tx.get("SUM", "0").replace(",", "."))
@@ -154,15 +155,15 @@ def update_balances_in_sheet(worksheet, balances: list):
     print("\n📊 Оновлення балансів у таблиці...")
     existing_rows = worksheet.get_all_values()
 
-    acc_col = 3  # індекс колонки з рахунком
-    balance_col = 9  # індекс колонки з балансом
+    acc_col = 3
+    balance_col = 9
 
     rows_to_update = []
 
     acc_to_row = {}
     for i, row in enumerate(existing_rows):
         if len(row) > acc_col and row[acc_col]:
-            acc_to_row[row[acc_col]] = i + 1  # gspread індексація з 1
+            acc_to_row[row[acc_col]] = i + 1
 
     for bal in balances:
         acc = bal.get("acc", "")
@@ -210,16 +211,18 @@ def privat_export():
         print(f"\n📆 Обробка транзакцій з {from_date} до {to_date}")
 
         transactions = fetch_transactions(api_token, from_date, to_date)
-        write_privat_transactions_to_sheet(worksheet, transactions)
 
         print("📈 Отримання фінальних балансів...")
         balances = fetch_balances(api_token)
+
+        # Словник: рахунок → імʼя
+        acc_name_map = {b.get("acc"): b.get("nameACC") for b in balances}
+
+        write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map)
         update_balances_in_sheet(worksheet, balances)
 
-        # Оновлюємо дату в конфігу на сьогодні
         today_str = datetime.now().strftime("%d.%m.%Y")
         entry["data"] = today_str
         print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
 
-    # Записуємо оновлений конфіг назад у файл
     config_manager(CONFIG)
