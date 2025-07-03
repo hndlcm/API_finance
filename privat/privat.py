@@ -125,7 +125,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
             new_row[6] = 0.0
         
         new_row[7] = tx.get("CCY", "UAH")
-        new_row[9] = acc_balance_map.get(account, "")
+        new_row[9] = acc_balance_map.get(account, "")  # баланс із balanceInEq
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
         new_row[12] = (
@@ -162,26 +162,26 @@ def update_balances_in_sheet(worksheet, balances: list):
     print("\n📊 Оновлення балансів у таблиці...")
     existing_rows = worksheet.get_all_values()
 
-    acc_col = 3
-    balance_col = 9
+    acc_col = 3       # колонка з рахунком в таблиці (D)
+    balance_col = 9   # колонка для балансу (J)
 
     rows_to_update = []
 
     acc_to_row = {}
     for i, row in enumerate(existing_rows):
         if len(row) > acc_col and row[acc_col]:
-            acc_to_row[row[acc_col]] = i + 1
+            acc_to_row[row[acc_col]] = i + 1  # номер рядка для оновлення
 
     for bal in balances:
         acc = bal.get("acc", "")
-        balance = bal.get("balanceOut", "0.00")
+        balance = bal.get("balanceInEq", "0.00")  # беремо balanceInEq
         if acc in acc_to_row:
             row_number = acc_to_row[acc]
             rows_to_update.append({
                 "range": f"{chr(ord('A') + balance_col)}{row_number}",
                 "values": [[balance]]
             })
-            print(f"Оновлено баланс для рахунку {acc}: {balance}")
+            print(f"Оновлено баланс (balanceInEq) для рахунку {acc}: {balance}")
 
     if rows_to_update:
         worksheet.batch_update(rows_to_update)
@@ -224,8 +224,8 @@ def privat_export():
 
         # Словник: рахунок → імʼя
         acc_name_map = {b.get("acc"): b.get("nameACC") for b in balances}
-        # Словник: рахунок → баланс
-        acc_balance_map = {b.get("acc"): b.get("balanceOut", "0.00") for b in balances}
+        # Словник: рахунок → баланс (balanceInEq)
+        acc_balance_map = {b.get("acc"): b.get("balanceInEq", "0.00") for b in balances}
 
         write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map, acc_balance_map)
         update_balances_in_sheet(worksheet, balances)
