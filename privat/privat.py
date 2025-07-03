@@ -82,7 +82,7 @@ def fetch_balances(api_token: str) -> list:
     return all_balances
 
 
-def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict):
+def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict, acc_balance_map: dict):
     try:
         existing_rows = worksheet.get_all_values()
     except Exception:
@@ -112,7 +112,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         account = tx.get("AUT_MY_ACC", "")
         new_row[0] = tx_time_str
         new_row[1] = "privatbank"
-        new_row[2] = acc_name_map.get(account, "")  # <-- тут підставляємо назву рахунку
+        new_row[2] = acc_name_map.get(account, "")  # назва рахунку
         new_row[3] = account
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
         try:
@@ -123,7 +123,9 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
             new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))
         except Exception:
             new_row[6] = 0.0
+        
         new_row[7] = tx.get("CCY", "UAH")
+        new_row[9] = acc_balance_map.get(account, "")
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
         new_row[12] = (
@@ -222,8 +224,10 @@ def privat_export():
 
         # Словник: рахунок → імʼя
         acc_name_map = {b.get("acc"): b.get("nameACC") for b in balances}
+        # Словник: рахунок → баланс
+        acc_balance_map = {b.get("acc"): b.get("balanceOut", "0.00") for b in balances}
 
-        write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map)
+        write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map, acc_balance_map)
         update_balances_in_sheet(worksheet, balances)
 
         today_str = datetime.now().strftime("%d.%m.%Y")
