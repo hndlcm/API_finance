@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config_manager import CONFIG, config_manager
+from config_manager import CONFIG
 
 
 def format_amount(value):
@@ -39,18 +39,9 @@ def export_erc20_to_google_sheet():
     for entry in erc20_entries:
         address = entry["address"]
         api_key = entry["api_key"]
-        date_str = entry.get("data")
+        days = entry.get("days", 5)
 
-        if not date_str:
-            config_date = datetime.now().date()
-        else:
-            try:
-                config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
-            except Exception:
-                print(f"❌ Невірний формат дати в конфігу: {date_str}, використовуємо сьогоднішню дату")
-                config_date = datetime.now().date()
-
-        from_date = config_date - timedelta(days=5)
+        from_date = datetime.now().date() - timedelta(days=days)
         to_date = datetime.now().date()
 
         print(f"\n🔍 Обробка адреси {address} ({entry.get('name', '')}), діапазон дат: {from_date} - {to_date}")
@@ -149,11 +140,3 @@ def export_erc20_to_google_sheet():
             print(f"✅ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
         else:
             print("✅ Нових транзакцій для додавання немає.")
-
-        # Оновлення дати
-        today_str = datetime.now().strftime("%d.%m.%Y")
-        entry["data"] = today_str
-        print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
-
-    # Запис змін у конфіг
-    config_manager(CONFIG)

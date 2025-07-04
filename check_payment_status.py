@@ -3,7 +3,8 @@ import time
 import json
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager  # Імпортуємо глобальний конфіг
+from config_manager import CONFIG, config_manager
+
 
 def format_amount(value):
     try:
@@ -11,12 +12,14 @@ def format_amount(value):
     except (ValueError, TypeError):
         return 0.00
 
+
 def format_date(date_str):
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         return dt.strftime("%Y.%m.%d %H:%M:%S")
     except Exception:
         return date_str
+
 
 def get_all_payment_statuses(start_date: str, end_date: str):
     PORTMONE_CFG = CONFIG.get("PORTMONE", [{}])[0]
@@ -72,6 +75,7 @@ def get_all_payment_statuses(start_date: str, end_date: str):
             json.dump(error_data, f, ensure_ascii=False, indent=4)
         print(f"❌ Помилка запиту Portmone: {e}")
         return []
+
 
 def write_orders_to_sheet(worksheet, orders: list):
     try:
@@ -132,19 +136,21 @@ def write_orders_to_sheet(worksheet, orders: list):
     else:
         print("✅ Нових транзакцій для додавання немає.")
 
+
 def export_portmone_orders_full():
     worksheet = init_google_sheet()
 
     portmone_config = CONFIG.get("PORTMONE", [{}])[0]
-    date_str = portmone_config.get("data")
+    days = portmone_config.get("days", 5)
 
     try:
-        start = datetime.strptime(date_str, "%d.%m.%Y")
+        days = int(days)
     except Exception:
-        print(f"⚠️ Невірна дата в конфігу: {date_str}, використовую сьогодні - 5 днів")
-        start = datetime.now() - timedelta(days=5)
+        print(f"⚠️ Невірне значення days у конфігурації: {days}, використовую 5 днів")
+        days = 5
 
     end = datetime.now()
+    start = end - timedelta(days=days)
 
     max_days = 30
     delta = timedelta(days=max_days)
@@ -166,8 +172,4 @@ def export_portmone_orders_full():
         current_start = current_end + timedelta(days=1)
         time.sleep(1)
 
-    # ✅ Оновлення дати в конфігурації
-    today_str = datetime.now().strftime("%d.%m.%Y")
-    CONFIG["PORTMONE"][0]["data"] = today_str
-    config_manager(CONFIG)
-    print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
+    print("✅ Експорт завершено.")

@@ -2,7 +2,7 @@ import requests
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config_manager import CONFIG, config_manager  
+from config_manager import CONFIG
 
 
 def format_date(date_str):
@@ -127,28 +127,11 @@ def export_fakturownia_all_to_google_sheets():
 
     for entry in fakturownia_entries:
         token = entry.get("api_token")
-        date_str = entry.get("data")
-        if not date_str:
-            print("⚠️ Відсутня дата у конфігурації, використовуємо сьогодні")
-            config_date = datetime.now().date()
-        else:
-            try:
-                config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
-            except Exception:
-                print(f"❌ Невірний формат дати: {date_str}, використовуємо сьогодні")
-                config_date = datetime.now().date()
+        days = entry.get("days", 5)
 
-        from_date = config_date - timedelta(days=5)
+        from_date = datetime.now().date() - timedelta(days=days)
         to_date = datetime.now().date()
 
         print(f"📡 Обробка токена: {token[:6]}..., діапазон дат: {from_date} - {to_date}")
 
         export_fakturownia_invoices_to_google_sheets(worksheet, token, from_date=from_date, to_date=to_date)
-
-        today_str = datetime.now().strftime("%d.%m.%Y")
-        entry["data"] = today_str
-        print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
-
-    # Записуємо оновлений конфіг назад у файл
-    config_manager(CONFIG)
-

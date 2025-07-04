@@ -2,7 +2,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager  
+from config_manager import CONFIG
 
 
 def format_amount(value):
@@ -25,14 +25,8 @@ def export_trc20_transactions_troscan_to_google_sheets():
         if not address:
             continue
 
-        date_str = item.get("data")
-        try:
-            config_date = datetime.strptime(date_str, "%d.%m.%Y").date()
-        except Exception:
-            print(f"❌ Невірний формат дати в конфігу: {date_str}, використовую сьогоднішню дату")
-            config_date = datetime.now().date()
-
-        from_date = config_date - timedelta(days=5)
+        days = item.get("days", 5)
+        from_date = datetime.now().date() - timedelta(days=days)
         to_date = datetime.now().date()
 
         print(f"\n📥 Обробка TRC20 адреси: {address}, діапазон дат: {from_date} - {to_date}")
@@ -143,9 +137,3 @@ def export_trc20_transactions_troscan_to_google_sheets():
             print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
         else:
             print("✅ Нових транзакцій для додавання немає.")
-
-        today_str = datetime.now().strftime("%d.%m.%Y")
-        item["data"] = today_str
-        print(f"📆 Оновлено дату в конфігу на сьогодні: {today_str}")
-
-    config_manager(CONFIG)

@@ -29,7 +29,7 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
             wait_time *= 2
         else:
             raise Exception(f"❌ Помилка API Mono: {response.status_code} - {response.text}")
-    raise Exception("❌ Превищено кількість повторів через помилку 429.")
+    raise Exception("❌ Перевищено кількість повторів через помилку 429.")
 
 
 def get_monobank_accounts(api_key):
@@ -59,15 +59,9 @@ def export_mono_transactions_to_google_sheets():
             print("⚠️ Відсутній api_token у MONO конфігу.")
             continue
 
-        date_str = item.get("data")
-        try:
-            config_date = datetime.strptime(date_str, "%d.%m.%Y")
-        except Exception:
-            print(f"⚠️ Невірний формат дати: {date_str}, використовую сьогодні.")
-            config_date = datetime.now()
-
-        from_dt = config_date - timedelta(days=5)
+        days = item.get("days", 5)
         to_dt = datetime.now()
+        from_dt = to_dt - timedelta(days=days)
 
         client_name, accounts = get_monobank_accounts(api_key)
         if not accounts:
@@ -166,8 +160,3 @@ def export_mono_transactions_to_google_sheets():
             else:
                 print("✅ Нових транзакцій немає.")
 
-        # ✅ Оновлюємо дату в конфігу
-        today_str = datetime.now().strftime("%d.%m.%Y")
-        item["data"] = today_str
-        config_manager(CONFIG)
-        print(f"📆 Дата у конфігу оновлена: {today_str}")
