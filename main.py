@@ -19,7 +19,7 @@ def generate_date_ranges(start_date, end_date, delta_days=31):
 
 def main_loop():
     while True:
-        try:
+        """        try:
             print("🚀 Запускаємо експорт privat транзакцій...")
             privat_export()
             print("✅ privat експорт завершено.\n")
@@ -30,7 +30,7 @@ def main_loop():
             export_mono_transactions_to_google_sheets()
             print("✅ mono експорт завершено.\n")
         except Exception as e:
-            print(f"❌ Помилка при експорті mono: {e}\n")
+            print(f"❌ Помилка при експорті mono: {e}\n")"""
 
         try:
             print("🚀 Запускаємо експорт TRC20 транзакцій...")

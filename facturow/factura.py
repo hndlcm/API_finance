@@ -83,7 +83,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
 
     for invoice in invoices:
         row = [""] * 17
-        row[0] = format_date(invoice.get("updated_at", ""))
+        row[0] = format_date(invoice.get("created_at", ""))
         row[1] = "fakturownia"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"

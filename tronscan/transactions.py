@@ -88,8 +88,8 @@ def export_trc20_transactions_troscan_to_google_sheets():
             timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d.%m.%Y %H:%M:%S")
             token = tx.get("token_info", {}).get("symbol", "")
             method = "TRC20"
-            to_address = tx.get("to_address", "").lower()
-            from_address = tx.get("from_address", "").lower()
+            to_address = tx.get("to_address", "")
+            from_address = tx.get("from_address", "")
             tx_hash = tx.get("transaction_id", "")
 
             try:
