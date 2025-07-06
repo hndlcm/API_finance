@@ -98,7 +98,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
                 amount = 0
 
             fee = 0
-            type_operation = "debit" if to_address == address_lower else "credit"
+            type_operation = "debit" if to_address.lower() == address_lower.lower() else "credit"
             address_counterparty = to_address if type_operation == "credit" else from_address
 
             new_row = [""] * 25
