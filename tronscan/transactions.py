@@ -102,7 +102,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
             address_counterparty = to_address if type_operation == "credit" else from_address
 
             new_row = [""] * 25
-            new_row[0] = timestamp
+            new_row[0] = str(timestamp)
             new_row[1] = method
             new_row[3] = address
             new_row[4] = type_operation
@@ -111,7 +111,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
             new_row[7] = token or "USDT"
             new_row[8] = "" if abs(fee) == 0 else abs(fee)
             new_row[13] = address_counterparty
-            new_row[16] = tx_hash
+            new_row[16] = str(tx_hash)
 
             if tx_hash in existing_tx_by_hash:
                 existing = existing_tx_by_hash[tx_hash]

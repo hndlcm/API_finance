@@ -102,7 +102,7 @@ def export_erc20_to_google_sheet():
             formatted_amount = abs(format_amount(amount))
 
             row = [""] * 25
-            row[0] = timestamp
+            row[0] = str(timestamp)
             row[1] = "ERC20"
             row[3] = address
             row[4] = type_operation
@@ -110,7 +110,7 @@ def export_erc20_to_google_sheet():
             row[6] = formatted_amount
             row[7] = token_symbol
             row[13] = counterparty
-            row[16] = tx_hash
+            row[16] = str(tx_hash)
 
             if tx_hash in existing_tx_by_hash:
                 existing = existing_tx_by_hash[tx_hash]

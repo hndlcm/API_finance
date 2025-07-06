@@ -109,7 +109,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
             tx_time_str = datetime_str.strip()
 
         account = tx.get("AUT_MY_ACC", "")
-        new_row[0] = tx_time_str
+        new_row[0] = str(tx_time_str)
         new_row[1] = "privatbank"
         new_row[2] = acc_name_map.get(account, "")  # назва рахунку
         new_row[3] = account
@@ -126,13 +126,18 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         new_row[7] = tx.get("CCY", "UAH")
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
-        new_row[12] = tx.get("AUT_CNTR_CRF", "")
+        new_row[12] = str(tx.get("AUT_CNTR_CRF", ""))
         new_row[13] = tx.get("AUT_CNTR_ACC", "")
-        new_row[16] = tx.get("ID", "")
+        new_row[16] = str(tx.get("ID", ""))
 
         tx_id = new_row[16]
         if tx_id in existing_tx_by_id:
             existing = existing_tx_by_id[tx_id]
+
+            # Зберігаємо J (new_row[9]) з існуючого рядка, якщо воно пусте
+            if not new_row[9] and len(existing["row_data"]) > 9:
+                new_row[9] = existing["row_data"][9]
+
             if new_row != existing["row_data"]:
                 rows_to_update.append((existing["row_number"], new_row))
         else:
@@ -161,7 +166,7 @@ def privat_export():
 
     for entry in tokens:
         api_token = entry.get("api_token")
-        days = entry.get("days", 5)  # кількість останніх днів, за замовчуванням 5
+        days = entry.get("days", 5)
 
         if not api_token:
             print("⚠️ Пропущено через відсутність токена")

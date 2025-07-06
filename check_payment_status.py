@@ -96,7 +96,7 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     for order in orders:
         new_row = [""] * 25
-        new_row[0] = format_date(order.get("pay_date", ""))
+        new_row[0] = str(format_date(order.get("pay_date", "")))
         new_row[1] = "portmone"
         new_row[2] = order.get("payee_name", "")
         status = order.get("status", "")
@@ -110,7 +110,7 @@ def write_orders_to_sheet(worksheet, orders: list):
         new_row[11] = f'{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}'
         new_row[13] = order.get("cardMask", "")
         new_row[15] = f'{order.get("errorCode", "")}, {order.get("errorMessage", "")}'
-        new_row[16] = order.get("shopBillId", "")
+        new_row[16] = str(order.get("shopBillId", ""))
 
         shop_bill_id = new_row[16]
 

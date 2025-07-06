@@ -78,7 +78,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
 
     for invoice in invoices:
         row = [""] * 17
-        row[0] = format_date(invoice.get("created_at", ""))
+        row[0] = str(format_date(invoice.get("created_at", "")))
         row[1] = "bitfaktura"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
@@ -88,7 +88,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
         row[7] = invoice.get("currency", "")
         row[10] = invoice.get("number", "")
         row[11] = invoice.get("buyer_name", "")
-        row[12] = invoice.get("buyer_tax_no", "")
+        row[12] = str(invoice.get("buyer_tax_no", ""))
         row[13] = invoice.get("buyer_bank_account", "")
         row[16] = str(invoice.get("id", ""))
 
