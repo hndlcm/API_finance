@@ -100,11 +100,13 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
 
     for tx in transactions:
         new_row = [""] * 25
+
         datetime_str = f"{tx.get('DAT_KL', '')} {tx.get('TIM_P', '')}"
         try:
-            tx_time = datetime.strptime(datetime_str, "%d.%m.%Y %H:%M")
+            tx_time = datetime.strptime(datetime_str, "%d.%m%Y %H:%M")
+            tx_time_str = tx_time.strftime("%d.%m.%Y %H:%M:%S")
         except Exception:
-            tx_time = datetime_str.strip()  # Якщо не вийшло спарсити, залишимо як текст
+            tx_time_str = datetime_str.strip()
 
         account = tx.get("AUT_MY_ACC", "")
         new_row[0] = tx_time_str
