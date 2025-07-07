@@ -15,9 +15,10 @@ def format_amount(value):
 
 def format_date(date_str):
     try:
-        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return dt.strftime("%d.%m.%Y %H:%M:%S")
     except Exception:
-        return date_str  # або None, якщо хочеш повертати пусто при помилці
+        return date_str
 
 
 def get_all_payment_statuses(start_date: str, end_date: str):

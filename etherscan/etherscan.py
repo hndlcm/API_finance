@@ -87,7 +87,7 @@ def export_erc20_to_google_sheet():
         rows_to_append = []
 
         for tx in all_transactions:
-            timestamp = datetime.fromtimestamp(int(tx["timeStamp"]))
+            timestamp = datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%d.%m.%Y %H:%M:%S")
             token_symbol = tx.get("tokenSymbol", "UNKNOWN")
             token_decimal = int(tx.get("tokenDecimal", "6"))
             from_address, to_address = tx.get("from", ""), tx.get("to", "")

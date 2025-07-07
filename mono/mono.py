@@ -113,15 +113,16 @@ def export_mono_transactions_to_google_sheets():
                 tx_id = str(tx.get("id", ""))
                 if not tx_id:
                     continue
-                dt = datetime.fromtimestamp(int(tx["timeStamp"]))
 
+                dt = datetime.fromtimestamp(tx.get("time", 0))
+                timestamp = dt.strftime("%d.%m.%Y %H:%M:%S")
                 amount = abs(format_amount(tx.get("amount", 0)) / 100)
                 balance = abs(format_amount(tx.get("balance", 0)) / 100)
                 description = tx.get("description", "")
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
                 currency_code = tx.get("currencyCode", "")
                 new_row = [""] * 25
-                new_row[0] = dt
+                new_row[0] = timestamp
                 new_row[1] = "monobank"
                 new_row[2] = client_name
                 new_row[3] = iban
