@@ -87,7 +87,7 @@ def export_erc20_to_google_sheet():
         rows_to_append = []
 
         for tx in all_transactions:
-            timestamp = datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%d.%m.%Y %H:%M:%S")
+            timestamp = datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%d-%m-%Y %H:%M:%S")
             token_symbol = tx.get("tokenSymbol", "UNKNOWN")
             token_decimal = int(tx.get("tokenDecimal", "6"))
             from_address, to_address = tx.get("from", ""), tx.get("to", "")
@@ -102,7 +102,7 @@ def export_erc20_to_google_sheet():
             formatted_amount = abs(format_amount(amount))
 
             row = [""] * 25
-            row[0] = str(timestamp)
+            row[0] = timestamp
             row[1] = "ERC20"
             row[3] = address
             row[4] = type_operation

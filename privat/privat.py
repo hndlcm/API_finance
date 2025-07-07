@@ -103,13 +103,13 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
 
         datetime_str = f"{tx.get('DAT_KL', '')} {tx.get('TIM_P', '')}"
         try:
-            tx_time = datetime.strptime(datetime_str, "%d.%m.%Y %H:%M")
-            tx_time_str = tx_time.strftime("%d.%m.%Y %H:%M:%S")
+            tx_time = datetime.strptime(datetime_str, "%d-%m-%Y %H:%M")
+            tx_time_str = tx_time.strftime("%d-%m-%Y %H:%M:%S")
         except Exception:
             tx_time_str = datetime_str.strip()
 
         account = tx.get("AUT_MY_ACC", "")
-        new_row[0] = str(tx_time_str)
+        new_row[0] = tx_time_str
         new_row[1] = "privatbank"
         new_row[2] = acc_name_map.get(account, "")  # назва рахунку
         new_row[3] = account
@@ -126,9 +126,9 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         new_row[7] = tx.get("CCY", "UAH")
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
-        new_row[12] = str(tx.get("AUT_CNTR_CRF", ""))
+        new_row[12] = int(tx.get("AUT_CNTR_CRF", ""))
         new_row[13] = tx.get("AUT_CNTR_ACC", "")
-        new_row[16] = str(tx.get("ID", ""))
+        new_row[16] = int(tx.get("ID", ""))
 
         tx_id = new_row[16]
         if tx_id in existing_tx_by_id:

@@ -16,7 +16,7 @@ def format_amount(value):
 def format_date(date_str):
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.strftime("%Y.%m.%d %H:%M:%S")
+        return dt.strftime("%d-%m-%Y %H:%M:%S")
     except Exception:
         return date_str
 
@@ -96,7 +96,7 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     for order in orders:
         new_row = [""] * 25
-        new_row[0] = str(format_date(order.get("pay_date", "")))
+        new_row[0] = format_date(order.get("pay_date", ""))
         new_row[1] = "portmone"
         new_row[2] = order.get("payee_name", "")
         status = order.get("status", "")
@@ -110,7 +110,7 @@ def write_orders_to_sheet(worksheet, orders: list):
         new_row[11] = f'{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}'
         new_row[13] = order.get("cardMask", "")
         new_row[15] = f'{order.get("errorCode", "")}, {order.get("errorMessage", "")}'
-        new_row[16] = str(order.get("shopBillId", ""))
+        new_row[16] = int(order.get("shopBillId", ""))
 
         shop_bill_id = new_row[16]
 

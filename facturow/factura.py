@@ -8,7 +8,7 @@ from config_manager import CONFIG
 def format_date(date_str):
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y %H:%M:%S")
+        return dt.strftime("%d-%m-%Y %H:%M:%S")
     except Exception:
         return date_str
 
@@ -83,7 +83,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
 
     for invoice in invoices:
         row = [""] * 17
-        row[0] = str(format_date(invoice.get("created_at", "")))
+        row[0] = format_date(invoice.get("created_at", ""))
         row[1] = "fakturownia"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"
@@ -93,9 +93,9 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
         row[7] = invoice.get("currency", "")
         row[10] = invoice.get("number", "")
         row[11] = invoice.get("client_name", "")
-        row[12] = str(invoice.get("client_tax_no", ""))
+        row[12] = int(invoice.get("client_tax_no", ""))
         row[13] = invoice.get("client_bank_account", "")
-        row[16] = str(invoice.get("id", ""))
+        row[16] = int(invoice.get("id", ""))
 
         inv_id = row[16]
         if inv_id in existing_invoices_by_id:

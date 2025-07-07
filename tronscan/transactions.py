@@ -85,7 +85,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
 
         address_lower = address.lower()
         for tx in all_transactions:
-            timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d.%m.%Y %H:%M:%S")
+            timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d-%m-%Y %H:%M:%S")
             token = tx.get("token_info", {}).get("symbol", "")
             method = "TRC20"
             to_address = tx.get("to_address", "")
@@ -102,7 +102,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
             address_counterparty = to_address if type_operation == "credit" else from_address
 
             new_row = [""] * 25
-            new_row[0] = str(timestamp)
+            new_row[0] = timestamp
             new_row[1] = method
             new_row[3] = address
             new_row[4] = type_operation
