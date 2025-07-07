@@ -14,8 +14,7 @@ def format_amount(value):
 
 def format_date(date_str):
     try:
-        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.strftime("%d-%m-%Y %H:%M:%S")
+        return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
     except Exception:
         return date_str
 
