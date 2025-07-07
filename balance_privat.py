@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pytz import timezone
 from gspread.utils import rowcol_to_a1
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager  
+from config_manager import CONFIG, config_manager
 
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
@@ -31,11 +31,9 @@ def fetch_balances(api_token: str) -> list:
             break
 
         balances = data.get("balances", [])
-        print(f"\n🔍 Баланси, отримані для токена {api_token}:")
-        for b in balances:
-            print(f" - '{b.get('acc')}' : {b.get('balanceOutEq')}")
-
         all_balances.extend(balances)
+
+        print(f"📊 Отримано {len(balances)} балансів")
 
         if data.get("exist_next_page"):
             params["followId"] = data.get("next_page_id", "")
@@ -49,7 +47,7 @@ def update_balances_in_sheet(worksheet, acc_balance_map: dict):
     print("\n📊 Оновлення балансів у таблиці...")
     existing_rows = worksheet.get_all_values()
 
-    col_type = 2     # колонка B (1-based)
+    col_type = 2     # колонка B
     col_account = 4  # колонка D
     col_balance = 10 # колонка J
 
@@ -75,6 +73,34 @@ def update_balances_in_sheet(worksheet, acc_balance_map: dict):
         print("⚠️ Не знайдено записів для оновлення.")
 
 
+def append_balance_rows_to_sheet(worksheet, balances: list):
+    now = datetime.now(timezone("Europe/Kyiv")).strftime("%d.%m.%y %H:%M")
+    new_rows = []
+
+    for b in balances:
+        row = [""] * 25
+        row[0] = now                                # Дата
+        row[1] = "privatbank"                       # Джерело
+        row[2] = b.get("nameACC", "")               # Назва рахунку
+        row[3] = b.get("acc", "")                   # IBAN
+        row[4] = "balance"                          # Тип операції
+        try:
+            balance = float(str(b.get("balanceOutEq", "0")).replace(",", "."))
+        except Exception:
+            balance = 0.0
+        row[5] = balance                            # debit
+        row[6] = balance                            # credit
+        row[7] = b.get("ccy", "UAH")                # Валюта
+
+        new_rows.append(row)
+
+    if new_rows:
+        worksheet.append_rows(new_rows, value_input_option="USER_ENTERED")
+        print(f"➕ Додано {len(new_rows)} рядків типу 'balance'")
+    else:
+        print("⚠️ Немає нових балансів для додавання.")
+
+
 def run_balance_update():
     tokens = CONFIG.get("PRIVAT", [])
     if not tokens:
@@ -82,36 +108,33 @@ def run_balance_update():
         return
 
     worksheet = init_google_sheet()
-    rows = worksheet.get_all_values()
-    accounts = set()
-    print("\n🔍 Рахунки з таблиці:")
-    for row in rows:
-        if len(row) >= 4 and row[1].strip().lower() == "privatbank":
-            print(f" - '{row[3]}'")
-            accounts.add(row[3].strip())
-
     acc_balance_map = {}
 
-    for acc in accounts:
-        normalized_acc = acc.replace(" ", "").strip()
-        print(f"\nПеревіряємо баланс по рахунку: '{acc}' (нормалізований: '{normalized_acc}')")
+    rows = worksheet.get_all_values()
+    accounts = set()
+    for row in rows:
+        if len(row) >= 4 and row[1].strip().lower() == "privatbank":
+            accounts.add(row[3].strip())
 
-        acc_found = False
-        for entry in tokens:
-            api_token = entry.get("api_token")
-            if not api_token:
-                continue
-            balances = fetch_balances(api_token)
+    for entry in tokens:
+        api_token = entry.get("api_token")
+        if not api_token:
+            continue
 
-            balance_obj = next((b for b in balances if b.get("acc", "").replace(" ", "").strip() == normalized_acc), None)
-            if balance_obj:
-                acc_balance_map[acc] = balance_obj.get("balanceOutEq", "0.00")
-                print(f"✅ Знайдено баланс {acc_balance_map[acc]} для рахунку {acc}")
-                acc_found = True
-                break
+        # Отримуємо всі баланси з токена
+        balances = fetch_balances(api_token)
 
-        if not acc_found:
-            print(f"❌ Баланс не знайдено для рахунку {acc}")
+        # Додаємо окремі рядки з балансами
+        append_balance_rows_to_sheet(worksheet, balances)
+
+        # Будуємо мапу для оновлення в існуючих рядках
+        for acc in accounts:
+            if acc and acc not in acc_balance_map:
+                balance_obj = next((b for b in balances if b.get("acc") == acc), None)
+                if balance_obj:
+                    acc_balance_map[acc] = balance_obj.get("balanceOutEq", "0.00")
+                else:
+                    acc_balance_map[acc] = "0.00"
 
     update_balances_in_sheet(worksheet, acc_balance_map)
 
