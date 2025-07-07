@@ -2,7 +2,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from pytz import timezone
-from gspread.utils import rowcol_to_a1  # Додано для правильного формування A1-адреси
+from gspread.utils import rowcol_to_a1
 from table import init_google_sheet
 from config_manager import CONFIG
 
@@ -36,25 +36,24 @@ def update_balances_in_sheet(worksheet, acc_balance_map: dict):
 
     rows_to_update = []
 
-    for i, row in enumerate(existing_rows, start=1):  # start=1 бо Google Sheets починає з 1
-        if len(row) >= col_type and row[col_type - 1].strip().lower() == "privatbank":
-            if len(row) >= col_account:
-                account = row[col_account - 1].strip()
-                balance = acc_balance_map.get(account)
-                if balance is not None:
-                    cell_range = rowcol_to_a1(i, col_balance)
-                    rows_to_update.append({
-                        "range": cell_range,
-                        "values": [[balance]]
-                    })
-                    print(f"🔄 Оновлено баланс для {account}: {balance} → {cell_range}")
+    for i, row in enumerate(existing_rows, start=1):
+        if len(row) >= col_account and row[col_type - 1].strip().lower() == "privatbank":
+            account = row[col_account - 1].strip()
+            balance = acc_balance_map.get(account)
+            if balance is not None:
+                cell_range = rowcol_to_a1(i, col_balance)
+                rows_to_update.append({
+                    "range": cell_range,
+                    "values": [[balance]]
+                })
+                print(f"🔄 {cell_range} — {account}: {balance}")
 
     if rows_to_update:
         for update in rows_to_update:
             worksheet.update(update["range"], update["values"])
-        print(f"✅ Успішно оновлено {len(rows_to_update)} балансів.")
+        print(f"✅ Оновлено {len(rows_to_update)} балансів.")
     else:
-        print("⚠️ Не знайдено записів для оновлення.")
+        print("⚠️ Баланси не знайдені або не оновлені.")
 
 def run_balance_update():
     tokens = CONFIG.get("PRIVAT", [])
@@ -65,21 +64,30 @@ def run_balance_update():
     worksheet = init_google_sheet()
     acc_balance_map = {}
 
-    for entry in tokens:
-        api_token = entry.get("api_token")
-        if not api_token:
-            continue
+    # 1. Отримати всі унікальні рахунки з Google Sheet
+    rows = worksheet.get_all_values()
+    unique_accounts = set()
+    for row in rows:
+        if len(row) >= 4 and row[1].strip().lower() == "privatbank":
+            acc = row[3].strip()
+            if acc:
+                unique_accounts.add(acc)
 
-        rows = worksheet.get_all_values()
-        for row in rows:
-            if len(row) >= 4 and row[1].strip().lower() == "privatbank":
-                acc = row[3].strip()
-                if acc and acc not in acc_balance_map:
-                    balances = fetch_balances(api_token, acc)
-                    if balances:
-                        acc_balance_map[acc] = balances[0].get("balanceOutEq", "0.00")
-                    else:
-                        acc_balance_map[acc] = "0.00"
+    print(f"\n🔍 Знайдено {len(unique_accounts)} унікальних рахунків для запиту.")
+
+    # 2. Один запит для кожного рахунку
+    if tokens:
+        token = tokens[0].get("api_token")
+        if not token:
+            print("⚠️ Немає валідного токена.")
+            return
+
+        for acc in unique_accounts:
+            balances = fetch_balances(token, acc)
+            if balances:
+                acc_balance_map[acc] = balances[0].get("balanceOutEq", "0.00")
+            else:
+                acc_balance_map[acc] = "0.00"
 
     update_balances_in_sheet(worksheet, acc_balance_map)
 
@@ -91,7 +99,7 @@ def wait_until_5am_kyiv():
         if now >= next_run:
             next_run += timedelta(days=1)
         wait_seconds = (next_run - now).total_seconds()
-        print(f"🕔 Очікування до {next_run.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv)...")
+        print(f"\n🕔 Очікування до {next_run.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv)...")
         time.sleep(wait_seconds)
         run_balance_update()
 
