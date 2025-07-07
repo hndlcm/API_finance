@@ -173,3 +173,14 @@ def export_portmone_orders_full():
         time.sleep(1)
 
     print("✅ Експорт завершено.")
+        # 🔧 Форматування колонки A як дата-час
+    try:
+        worksheet.format("A2:A", {
+            "numberFormat": {
+                "type": "DATE_TIME",
+                "pattern": "dd.mm.yyyy hh:mm:ss"
+            }
+        })
+        print("🕒 Формат дати у колонці A встановлено.")
+    except Exception as e:
+        print(f"⚠️ Не вдалося встановити формат дати: {e}")

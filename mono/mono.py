@@ -19,6 +19,9 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
     wait_time = 2
 
     while retries <= max_retries:
+        # Затримка перед кожним запитом (щонайменше 60 сек)
+        time.sleep(60)
+
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             return response.json()
@@ -35,6 +38,10 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
 def get_monobank_accounts(api_key):
     headers = {"X-Token": api_key}
     url = "https://api.monobank.ua/personal/client-info"
+
+    # Затримка перед кожним запитом
+    time.sleep(60)
+
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
@@ -76,7 +83,6 @@ def export_mono_transactions_to_google_sheets():
             all_transactions = []
             chunk_start = from_dt
             chunk_days = 31
-            last_request_time = None
 
             while chunk_start < to_dt:
                 chunk_end = min(chunk_start + timedelta(days=chunk_days), to_dt)
@@ -85,16 +91,7 @@ def export_mono_transactions_to_google_sheets():
 
                 print(f"🔄 Транзакції з {chunk_start.date()} по {chunk_end.date()}")
 
-                # Обмеження по 1 запиту/хв
-                if last_request_time:
-                    elapsed = time.time() - last_request_time
-                    if elapsed < 60:
-                        wait_sec = 60 - elapsed
-                        print(f"⏳ Очікуємо {int(wait_sec)} сек для дотримання ліміту...")
-                        time.sleep(wait_sec)
-
                 try:
-                    last_request_time = time.time()
                     txs = fetch_monobank_transactions(account_id, api_key, from_time, to_time)
                     if not isinstance(txs, list):
                         print("❌ Очікував список транзакцій.")
