@@ -128,7 +128,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
         new_row[12] = int(tx.get("AUT_CNTR_CRF", ""))
         new_row[13] = tx.get("AUT_CNTR_ACC", "")
-        new_row[16] = int(tx.get("ID", ""))
+        new_row[16] = tx.get("ID", "")
 
         tx_id = new_row[16]
         if tx_id in existing_tx_by_id:

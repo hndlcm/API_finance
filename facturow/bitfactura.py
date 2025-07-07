@@ -90,7 +90,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
         row[11] = invoice.get("buyer_name", "")
         row[12] = int(invoice.get("buyer_tax_no", ""))
         row[13] = invoice.get("buyer_bank_account", "")
-        row[16] = int(invoice.get("id", ""))
+        row[16] = str(invoice.get("id", ""))
 
         inv_id = row[16]
         if inv_id in existing_invoices_by_id:

@@ -8,6 +8,7 @@ from config_manager import CONFIG, config_manager
 
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
+
 def fetch_balances(api_token: str) -> list:
     headers = {
         "User-Agent": "MyApp/1.0",
@@ -30,9 +31,11 @@ def fetch_balances(api_token: str) -> list:
             break
 
         balances = data.get("balances", [])
-        all_balances.extend(balances)
+        print(f"\n🔍 Баланси, отримані для токена {api_token}:")
+        for b in balances:
+            print(f" - '{b.get('acc')}' : {b.get('balanceOutEq')}")
 
-        print(f"📊 Отримано {len(balances)} балансів")
+        all_balances.extend(balances)
 
         if data.get("exist_next_page"):
             params["followId"] = data.get("next_page_id", "")
@@ -40,6 +43,7 @@ def fetch_balances(api_token: str) -> list:
             break
 
     return all_balances
+
 
 def update_balances_in_sheet(worksheet, acc_balance_map: dict):
     print("\n📊 Оновлення балансів у таблиці...")
@@ -51,7 +55,7 @@ def update_balances_in_sheet(worksheet, acc_balance_map: dict):
 
     batch_data = []
 
-    for i, row in enumerate(existing_rows, start=1):  # починаємо з 1, бо Google Sheets індексує з 1
+    for i, row in enumerate(existing_rows, start=1):
         if len(row) >= col_type and row[col_type - 1].strip().lower() == "privatbank":
             if len(row) >= col_account:
                 account = row[col_account - 1].strip()
@@ -70,6 +74,7 @@ def update_balances_in_sheet(worksheet, acc_balance_map: dict):
     else:
         print("⚠️ Не знайдено записів для оновлення.")
 
+
 def run_balance_update():
     tokens = CONFIG.get("PRIVAT", [])
     if not tokens:
@@ -77,31 +82,39 @@ def run_balance_update():
         return
 
     worksheet = init_google_sheet()
-    acc_balance_map = {}
-
-    # Збираємо унікальні рахунки з таблиці
     rows = worksheet.get_all_values()
     accounts = set()
+    print("\n🔍 Рахунки з таблиці:")
     for row in rows:
         if len(row) >= 4 and row[1].strip().lower() == "privatbank":
+            print(f" - '{row[3]}'")
             accounts.add(row[3].strip())
 
-    for entry in tokens:
-        api_token = entry.get("api_token")
-        if not api_token:
-            continue
+    acc_balance_map = {}
 
-        for acc in accounts:
-            if acc and acc not in acc_balance_map:
-                balances = fetch_balances(api_token)
-                # balances — список балансів, знаходимо потрібний за acc
-                balance_obj = next((b for b in balances if b.get("acc") == acc), None)
-                if balance_obj:
-                    acc_balance_map[acc] = balance_obj.get("balanceOutEq", "0.00")
-                else:
-                    acc_balance_map[acc] = "0.00"
+    for acc in accounts:
+        normalized_acc = acc.replace(" ", "").strip()
+        print(f"\nПеревіряємо баланс по рахунку: '{acc}' (нормалізований: '{normalized_acc}')")
+
+        acc_found = False
+        for entry in tokens:
+            api_token = entry.get("api_token")
+            if not api_token:
+                continue
+            balances = fetch_balances(api_token)
+
+            balance_obj = next((b for b in balances if b.get("acc", "").replace(" ", "").strip() == normalized_acc), None)
+            if balance_obj:
+                acc_balance_map[acc] = balance_obj.get("balanceOutEq", "0.00")
+                print(f"✅ Знайдено баланс {acc_balance_map[acc]} для рахунку {acc}")
+                acc_found = True
+                break
+
+        if not acc_found:
+            print(f"❌ Баланс не знайдено для рахунку {acc}")
 
     update_balances_in_sheet(worksheet, acc_balance_map)
+
 
 def wait_until_5am_kyiv():
     kyiv = timezone("Europe/Kyiv")
@@ -114,6 +127,7 @@ def wait_until_5am_kyiv():
         print(f"🕔 Очікуємо до {next_run.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv)...")
         time.sleep(wait_seconds)
         run_balance_update()
+
 
 if __name__ == "__main__":
     wait_until_5am_kyiv()

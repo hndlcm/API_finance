@@ -111,7 +111,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
             new_row[7] = token or "USDT"
             new_row[8] = "" if abs(fee) == 0 else abs(fee)
             new_row[13] = address_counterparty
-            new_row[16] = str(tx_hash)
+            new_row[16] = tx_hash
 
             if tx_hash in existing_tx_by_hash:
                 existing = existing_tx_by_hash[tx_hash]

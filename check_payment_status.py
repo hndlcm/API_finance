@@ -110,7 +110,7 @@ def write_orders_to_sheet(worksheet, orders: list):
         new_row[11] = f'{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}'
         new_row[13] = order.get("cardMask", "")
         new_row[15] = f'{order.get("errorCode", "")}, {order.get("errorMessage", "")}'
-        new_row[16] = int(order.get("shopBillId", ""))
+        new_row[16] = order.get("shopBillId", "")
 
         shop_bill_id = new_row[16]
 

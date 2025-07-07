@@ -110,7 +110,7 @@ def export_erc20_to_google_sheet():
             row[6] = formatted_amount
             row[7] = token_symbol
             row[13] = counterparty
-            row[16] = str(tx_hash)
+            row[16] = tx_hash
 
             if tx_hash in existing_tx_by_hash:
                 existing = existing_tx_by_hash[tx_hash]
