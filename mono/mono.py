@@ -76,6 +76,7 @@ def export_mono_transactions_to_google_sheets():
             all_transactions = []
             chunk_start = from_dt
             chunk_days = 31
+            last_request_time = None
 
             while chunk_start < to_dt:
                 chunk_end = min(chunk_start + timedelta(days=chunk_days), to_dt)
@@ -84,7 +85,16 @@ def export_mono_transactions_to_google_sheets():
 
                 print(f"🔄 Транзакції з {chunk_start.date()} по {chunk_end.date()}")
 
+                # Обмеження по 1 запиту/хв
+                if last_request_time:
+                    elapsed = time.time() - last_request_time
+                    if elapsed < 60:
+                        wait_sec = 60 - elapsed
+                        print(f"⏳ Очікуємо {int(wait_sec)} сек для дотримання ліміту...")
+                        time.sleep(wait_sec)
+
                 try:
+                    last_request_time = time.time()
                     txs = fetch_monobank_transactions(account_id, api_key, from_time, to_time)
                     if not isinstance(txs, list):
                         print("❌ Очікував список транзакцій.")
@@ -95,7 +105,6 @@ def export_mono_transactions_to_google_sheets():
                     break
 
                 chunk_start = chunk_end + timedelta(seconds=1)
-                time.sleep(60)  # ⏳ затримка
 
             existing_rows = worksheet.get_all_values()
             header_offset = 1
@@ -104,7 +113,7 @@ def export_mono_transactions_to_google_sheets():
                 full_row = row + [""] * (25 - len(row))
                 tx_id = full_row[16]
                 if tx_id:
-                    existing_tx_by_id[tx_id] = {"row_number": i, "row_data": full_row}
+                    existing_tx_by_id[str(tx_id)] = {"row_number": i, "row_data": full_row}
 
             rows_to_update = []
             rows_to_append = []
@@ -134,7 +143,7 @@ def export_mono_transactions_to_google_sheets():
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
                 new_row[11] = tx.get("counterName", "")
-                new_row[12] = int(tx.get("counterEdrpou", ""))
+                new_row[12] = int(tx.get("counterEdrpou", 0)) if tx.get("counterEdrpou") else ""
                 new_row[13] = tx.get("counterIban", "")
                 new_row[14] = tx.get("mcc", "")
                 new_row[15] = description
@@ -159,4 +168,3 @@ def export_mono_transactions_to_google_sheets():
                 print(f"➕ Додано {len(rows_to_append)} нових транзакцій.")
             else:
                 print("✅ Нових транзакцій немає.")
-
