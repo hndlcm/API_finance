@@ -143,11 +143,11 @@ def export_mono_transactions_to_google_sheets():
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
                 new_row[11] = tx.get("counterName", "")
-                new_row[12] = int(tx.get("counterEdrpou", 0)) if tx.get("counterEdrpou") else ""
+                new_row[12] = tx.get("counterEdrpou", 0) if tx.get("counterEdrpou") else ""
                 new_row[13] = tx.get("counterIban", "")
                 new_row[14] = tx.get("mcc", "")
                 new_row[15] = description
-                new_row[16] = int(tx_id)
+                new_row[16] = tx_id
 
                 if tx_id in existing_tx_by_id:
                     existing = existing_tx_by_id[tx_id]
