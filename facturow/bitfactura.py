@@ -3,8 +3,8 @@ from datetime import datetime, timezone, timedelta
 import gspread
 import re
 from oauth2client.service_account import ServiceAccountCredentials
-from config_manager import CONFIG
-from dateutil import parser
+from config_manager import config_manager
+
 
 
 def format_amount(value):
@@ -128,6 +128,7 @@ def export_bitfactura_invoices_to_google_sheets(worksheet, api_token, from_date=
 
 
 def export_bitfactura_all_to_google_sheets():
+    CONFIG = config_manager()
     sheet_conf = CONFIG["google_sheet"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
@@ -136,6 +137,7 @@ def export_bitfactura_all_to_google_sheets():
     worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
 
     bitfactura_entries = CONFIG.get("BITFACTURA", [])
+
     if not bitfactura_entries:
         print("⚠️ Немає підключених Bitfaktura акаунтів у конфігурації.")
         return

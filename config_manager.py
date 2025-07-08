@@ -15,6 +15,3 @@ def config_manager(new_config=None):
         # Не перезаписуємо файл, а просто повертаємо новий конфіг
         return new_config
 
-
-# Глобальне завантаження конфігу для зручності
-CONFIG = config_manager()

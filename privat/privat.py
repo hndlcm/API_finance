@@ -2,7 +2,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager
+from config_manager import config_manager
 
 BASE_URL_TRANSACTIONS = "https://acp.privatbank.ua/api/statements/transactions"
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
@@ -156,7 +156,9 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         print("✅ Нових транзакцій немає.")
 
 def privat_export():
+    CONFIG = config_manager()
     tokens = CONFIG.get("PRIVAT", [])
+
     if not tokens:
         print("❌ У конфігурації немає PRIVAT токенів.")
         return
@@ -188,4 +190,3 @@ def privat_export():
 
         write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map)
 
-    config_manager(CONFIG)

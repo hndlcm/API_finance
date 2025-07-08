@@ -3,8 +3,7 @@ import time
 from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config_manager import CONFIG
-
+from config_manager import config_manager
 
 def format_amount(value):
     try:
@@ -24,6 +23,7 @@ def timestamp_to_serial_date(ts: int):
 
 
 def export_erc20_to_google_sheet():
+    CONFIG = config_manager() 
     # Авторизація Google Sheets
     sheet_conf = CONFIG["google_sheet"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]

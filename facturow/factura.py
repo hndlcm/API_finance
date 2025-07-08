@@ -1,7 +1,7 @@
 import requests
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from config_manager import CONFIG
+from config_manager import config_manager
 from datetime import datetime, timezone, timedelta
 import re
 
@@ -29,6 +29,7 @@ def convert_to_serial_date(date_str):
 
 
 def init_google_sheet():
+    CONFIG = config_manager() 
     sheet_conf = CONFIG["google_sheet"]
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
@@ -133,6 +134,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
 
 
 def export_fakturownia_all_to_google_sheets():
+    CONFIG = config_manager()
     worksheet = init_google_sheet()
 
     fakturownia_entries = CONFIG.get("FACTUROWNIA", [])

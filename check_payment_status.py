@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager
+from config_manager import  config_manager
 
 
 def format_amount(value):
@@ -25,11 +25,13 @@ def convert_to_serial_date(date_str):
 
 
 def get_all_payment_statuses(start_date: str, end_date: str):
-    PORTMONE_CFG = CONFIG.get("PORTMONE", [{}])[0]
+    CONFIG = config_manager()
+    portmone_config = CONFIG.get("PORTMONE", [{}])[0]
+
     PORTMONE_URL = "https://www.portmone.com.ua/gateway/"
-    PAYEE_ID = PORTMONE_CFG.get("payee_id")
-    LOGIN = PORTMONE_CFG.get("login")
-    PASSWORD = PORTMONE_CFG.get("password")
+    PAYEE_ID = portmone_config.get("payee_id")
+    LOGIN = portmone_config.get("login")
+    PASSWORD = portmone_config.get("password")
 
     if not (PAYEE_ID and LOGIN and PASSWORD):
         print("❌ В конфігурації не задані дані Portmone (login, password, payee_id)")
@@ -147,7 +149,9 @@ def write_orders_to_sheet(worksheet, orders: list):
 def export_portmone_orders_full():
     worksheet = init_google_sheet()
 
+    CONFIG = config_manager()
     portmone_config = CONFIG.get("PORTMONE", [{}])[0]
+
     days = portmone_config.get("days", 5)
 
     try:

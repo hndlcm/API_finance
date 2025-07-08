@@ -2,7 +2,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import CONFIG
+from config_manager import config_manager
 
 
 def format_amount(value):
@@ -23,6 +23,7 @@ def timestamp_to_serial_date(ts: int):
 
 
 def export_trc20_transactions_troscan_to_google_sheets():
+    CONFIG = config_manager()
     trc20_entries = CONFIG.get("TRC20", [])
     if not trc20_entries:
         print("⚠️ TRC20 адреси у конфігурації не знайдено.")

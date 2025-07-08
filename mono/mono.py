@@ -1,7 +1,7 @@
 import time
 import requests
 from datetime import datetime, timedelta
-from config_manager import CONFIG, config_manager
+from config_manager import config_manager
 from table import init_google_sheet
 
 
@@ -27,7 +27,7 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
 
     while retries <= max_retries:
         # Затримка перед кожним запитом (щонайменше 60 сек)
-        time.sleep(60)
+        time.sleep(66)
 
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
@@ -60,6 +60,7 @@ def get_monobank_accounts(api_key):
 
 
 def export_mono_transactions_to_google_sheets():
+    CONFIG = config_manager()
     mono_entries = CONFIG.get("MONO", [])
     if not mono_entries:
         print("⚠️ MONO гаманці у конфігу не знайдено.")

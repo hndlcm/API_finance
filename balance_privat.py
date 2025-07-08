@@ -3,7 +3,7 @@ import requests
 from datetime import datetime, timedelta
 from pytz import timezone
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager
+from config_manager import config_manager
 
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
@@ -49,24 +49,23 @@ def convert_to_serial_date(dt: datetime) -> float:
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
 
 
-def append_balance_rows_to_sheet(worksheet, balances: list):
-    now_dt = datetime.now(timezone("Europe/Kyiv"))
-    now_serial = convert_to_serial_date(now_dt)
+def append_balance_rows_to_sheet(worksheet, balances: list, current_dt: datetime):
+    current_serial = convert_to_serial_date(current_dt)
     new_rows = []
 
     for b in balances:
         row = [""] * 25
-        row[0] = now_serial                         # Дата у форматі float
-        row[1] = "privatbank"                       # Джерело
-        row[2] = b.get("nameACC", "")               # Назва рахунку
-        row[3] = b.get("acc", "")                   # IBAN
-        row[4] = "balance"                          # Тип операції
+        row[0] = current_serial
+        row[1] = "privatbank"
+        row[2] = b.get("nameACC", "")
+        row[3] = b.get("acc", "")
+        row[4] = "balance"
         try:
             balance = float(str(b.get("balanceOutEq", "0")).replace(",", "."))
         except Exception:
             balance = 0.0
-        row[7] = b.get("ccy", "UAH")                # Валюта
-        row[9] = balance                            # credit
+        row[7] = b.get("ccy", "UAH")
+        row[9] = balance
 
         new_rows.append(row)
 
@@ -78,12 +77,14 @@ def append_balance_rows_to_sheet(worksheet, balances: list):
 
 
 def run_balance_update():
+    CONFIG = config_manager()
     tokens = CONFIG.get("PRIVAT", [])
     if not tokens:
         print("❌ У конфігурації немає токенів PRIVAT.")
         return
 
     worksheet = init_google_sheet()
+    current_dt = datetime.now(timezone("Europe/Kyiv"))
 
     for entry in tokens:
         api_token = entry.get("api_token")
@@ -91,7 +92,7 @@ def run_balance_update():
             continue
 
         balances = fetch_balances(api_token)
-        append_balance_rows_to_sheet(worksheet, balances)
+        append_balance_rows_to_sheet(worksheet, balances, current_dt)
 
 
 def wait_until_5am_kyiv():

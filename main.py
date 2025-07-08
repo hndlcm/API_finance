@@ -65,7 +65,7 @@ def main_loop():
             print(f"❌ Помилка при експорті Portmone: {e}\n")
 
         print("⏰ Чекаємо 1 годину до наступного запуску...\n")
-        time.sleep(3600)
+        time.sleep(180)
 
 
 if __name__ == "__main__":
