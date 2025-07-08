@@ -13,12 +13,15 @@ def format_amount(value):
         return 0.00
 
 
-def format_date(date_str):
+def convert_to_serial_date(date_str):
+    """Конвертує ISO-дату або дату з 'Z' у float для Google Sheets"""
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y %H:%M:%S")
+        epoch = datetime(1899, 12, 30)
+        delta = dt - epoch
+        return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
     except Exception:
-        return date_str
+        return date_str  # повертаємо як є, якщо не вдалося
 
 
 def get_all_payment_statuses(start_date: str, end_date: str):
@@ -96,7 +99,7 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     for order in orders:
         new_row = [""] * 25
-        new_row[0] = format_date(order.get("pay_date", ""))
+        new_row[0] = convert_to_serial_date(order.get("pay_date", ""))
         new_row[1] = "portmone"
         new_row[2] = order.get("payee_name", "")
         status = order.get("status", "")
@@ -131,7 +134,11 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     if rows_to_append:
         start_row = len(existing_rows) + 1
-        worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
+        worksheet.update(
+            f"A{start_row}:Y{start_row + len(rows_to_append) - 1}",
+            rows_to_append,
+            value_input_option="USER_ENTERED"
+        )
         print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
     else:
         print("✅ Нових транзакцій для додавання немає.")
@@ -172,8 +179,6 @@ def export_portmone_orders_full():
         current_start = current_end + timedelta(days=1)
         time.sleep(1)
 
-    print("✅ Експорт завершено.")
-        # 🔧 Форматування колонки A як дата-час
     try:
         worksheet.format("A2:A", {
             "numberFormat": {
@@ -184,3 +189,5 @@ def export_portmone_orders_full():
         print("🕒 Формат дати у колонці A встановлено.")
     except Exception as e:
         print(f"⚠️ Не вдалося встановити формат дати: {e}")
+
+    print("✅ Експорт завершено.")

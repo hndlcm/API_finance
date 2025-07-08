@@ -2,11 +2,14 @@ import time
 import requests
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import CONFIG, config_manager  
+from config_manager import CONFIG, config_manager
 
 BASE_URL_TRANSACTIONS = "https://acp.privatbank.ua/api/statements/transactions"
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
+def datetime_to_serial_float(dt: datetime) -> float:
+    epoch = datetime(1899, 12, 30)
+    return (dt - epoch).total_seconds() / 86400  # days + fractional part
 
 def fetch_transactions(api_token, start_date: str, end_date: str, limit: int = 100) -> list:
     headers = {
@@ -46,7 +49,6 @@ def fetch_transactions(api_token, start_date: str, end_date: str, limit: int = 1
     print(f"\n📄 Загальна кількість транзакцій: {len(all_transactions)}")
     return all_transactions
 
-
 def fetch_balances(api_token: str) -> list:
     headers = {
         "User-Agent": "MyApp/1.0",
@@ -80,7 +82,6 @@ def fetch_balances(api_token: str) -> list:
 
     return all_balances
 
-
 def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict):
     try:
         existing_rows = worksheet.get_all_values()
@@ -103,15 +104,14 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
 
         datetime_str = f"{tx.get('DAT_KL', '')} {tx.get('TIM_P', '')}"
         try:
-            tx_time = datetime.strptime(datetime_str, "%d.%m%Y %H:%M")
-            tx_time_str = tx_time.strftime("%d.%m.%Y %H:%M:%S")
+            tx_time = datetime.strptime(datetime_str, "%d.%m.%Y %H:%M")
+            new_row[0] = datetime_to_serial_float(tx_time)
         except Exception:
-            tx_time_str = datetime_str.strip()
+            new_row[0] = datetime_str.strip()
 
         account = tx.get("AUT_MY_ACC", "")
-        new_row[0] = tx_time_str
         new_row[1] = "privatbank"
-        new_row[2] = acc_name_map.get(account, "")  # назва рахунку
+        new_row[2] = acc_name_map.get(account, "")
         new_row[3] = account
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
         try:
@@ -122,22 +122,22 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
             new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))
         except Exception:
             new_row[6] = 0.0
-        
+
         new_row[7] = tx.get("CCY", "UAH")
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
-        new_row[12] = int(tx.get("AUT_CNTR_CRF", ""))
+        try:
+            new_row[12] = int(tx.get("AUT_CNTR_CRF", "0"))
+        except Exception:
+            new_row[12] = 0
         new_row[13] = tx.get("AUT_CNTR_ACC", "")
         new_row[16] = tx.get("ID", "")
 
         tx_id = new_row[16]
         if tx_id in existing_tx_by_id:
             existing = existing_tx_by_id[tx_id]
-
-            # Зберігаємо J (new_row[9]) з існуючого рядка, якщо воно пусте
             if not new_row[9] and len(existing["row_data"]) > 9:
                 new_row[9] = existing["row_data"][9]
-
             if new_row != existing["row_data"]:
                 rows_to_update.append((existing["row_number"], new_row))
         else:
@@ -145,16 +145,15 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
 
     if rows_to_update:
         batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
-        worksheet.batch_update(batch_data)
+        worksheet.batch_update(batch_data, value_input_option="USER_ENTERED")
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
     if rows_to_append:
         start_row = len(existing_rows) + 1
-        worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
+        worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append, value_input_option="USER_ENTERED")
         print(f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}.")
     else:
         print("✅ Нових транзакцій немає.")
-
 
 def privat_export():
     tokens = CONFIG.get("PRIVAT", [])

@@ -1,15 +1,30 @@
 import requests
-from datetime import datetime, timedelta
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from config_manager import CONFIG
+from datetime import datetime, timezone, timedelta
+import re
 
 
-def format_date(date_str):
+def convert_to_serial_date(date_str):
     try:
-        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        return dt.strftime("%d.%m.%Y %H:%M:%S")
-    except Exception:
+        # Вирізаємо часову зону у вигляді +02:00 або -03:00
+        # і перетворюємо у формат, який розуміє fromisoformat (без двокрапки в зоні)
+        # Приклад: 2025-07-01T11:28:13.000+02:00 -> 2025-07-01T11:28:13.000+0200
+        if date_str[-3] == ':':
+            date_str = date_str[:-3] + date_str[-2:]
+        
+        dt = datetime.fromisoformat(date_str)
+
+        # Конвертація дати з часовою зоною в UTC
+        if dt.tzinfo is not None:
+            dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+        epoch = datetime(1899, 12, 30)
+        delta = dt - epoch
+        return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
+    except Exception as e:
+        print(f"⚠️ Помилка при конвертації дати {date_str}: {e}")
         return date_str
 
 
@@ -83,7 +98,7 @@ def export_fakturownia_invoices_to_google_sheets(worksheet, api_token, from_date
 
     for invoice in invoices:
         row = [""] * 17
-        row[0] = format_date(invoice.get("created_at", ""))
+        row[0] = convert_to_serial_date(invoice.get("created_at", ""))
         row[1] = "fakturownia"
         row[3] = invoice.get("seller_bank_account", "")
         row[4] = "invoice"

@@ -2,7 +2,6 @@ import time
 import requests
 from datetime import datetime, timedelta
 from pytz import timezone
-from gspread.utils import rowcol_to_a1
 from table import init_google_sheet
 from config_manager import CONFIG, config_manager
 
@@ -43,43 +42,21 @@ def fetch_balances(api_token: str) -> list:
     return all_balances
 
 
-def update_balances_in_sheet(worksheet, acc_balance_map: dict):
-    print("\n📊 Оновлення балансів у таблиці...")
-    existing_rows = worksheet.get_all_values()
-
-    col_type = 2     # колонка B
-    col_account = 4  # колонка D
-    col_balance = 10 # колонка J
-
-    batch_data = []
-
-    for i, row in enumerate(existing_rows, start=1):
-        if len(row) >= col_type and row[col_type - 1].strip().lower() == "privatbank":
-            if len(row) >= col_account:
-                account = row[col_account - 1].strip()
-                balance = acc_balance_map.get(account)
-                if balance is not None:
-                    cell_range = rowcol_to_a1(i, col_balance)
-                    batch_data.append({
-                        "range": cell_range,
-                        "values": [[balance]]
-                    })
-                    print(f"🔄 Оновлюємо баланс для {account}: {balance} → {cell_range}")
-
-    if batch_data:
-        worksheet.batch_update(batch_data)
-        print(f"✅ Успішно оновлено {len(batch_data)} балансів.")
-    else:
-        print("⚠️ Не знайдено записів для оновлення.")
+def convert_to_serial_date(dt: datetime) -> float:
+    """Конвертує datetime до числа формату Google Sheets (serial date)"""
+    epoch = datetime(1899, 12, 30, tzinfo=dt.tzinfo)
+    delta = dt - epoch
+    return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
 
 
 def append_balance_rows_to_sheet(worksheet, balances: list):
-    now = datetime.now(timezone("Europe/Kyiv")).strftime("%d.%m.%y %H:%M")
+    now_dt = datetime.now(timezone("Europe/Kyiv"))
+    now_serial = convert_to_serial_date(now_dt)
     new_rows = []
 
     for b in balances:
         row = [""] * 25
-        row[0] = now                                # Дата
+        row[0] = now_serial                         # Дата у форматі float
         row[1] = "privatbank"                       # Джерело
         row[2] = b.get("nameACC", "")               # Назва рахунку
         row[3] = b.get("acc", "")                   # IBAN
@@ -88,9 +65,8 @@ def append_balance_rows_to_sheet(worksheet, balances: list):
             balance = float(str(b.get("balanceOutEq", "0")).replace(",", "."))
         except Exception:
             balance = 0.0
-        row[5] = balance                            # debit
-        row[6] = balance                            # credit
         row[7] = b.get("ccy", "UAH")                # Валюта
+        row[9] = balance                            # credit
 
         new_rows.append(row)
 
@@ -108,35 +84,14 @@ def run_balance_update():
         return
 
     worksheet = init_google_sheet()
-    acc_balance_map = {}
-
-    rows = worksheet.get_all_values()
-    accounts = set()
-    for row in rows:
-        if len(row) >= 4 and row[1].strip().lower() == "privatbank":
-            accounts.add(row[3].strip())
 
     for entry in tokens:
         api_token = entry.get("api_token")
         if not api_token:
             continue
 
-        # Отримуємо всі баланси з токена
         balances = fetch_balances(api_token)
-
-        # Додаємо окремі рядки з балансами
         append_balance_rows_to_sheet(worksheet, balances)
-
-        # Будуємо мапу для оновлення в існуючих рядках
-        for acc in accounts:
-            if acc and acc not in acc_balance_map:
-                balance_obj = next((b for b in balances if b.get("acc") == acc), None)
-                if balance_obj:
-                    acc_balance_map[acc] = balance_obj.get("balanceOutEq", "0.00")
-                else:
-                    acc_balance_map[acc] = "0.00"
-
-    update_balances_in_sheet(worksheet, acc_balance_map)
 
 
 def wait_until_5am_kyiv():

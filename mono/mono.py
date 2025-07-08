@@ -12,6 +12,13 @@ def format_amount(value):
         return 0.0
 
 
+def convert_to_serial_date(dt: datetime) -> float:
+    """Конвертує datetime до числа формату Google Sheets (serial date)"""
+    epoch = datetime(1899, 12, 30)
+    delta = dt - epoch
+    return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
+
+
 def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_retries=5):
     headers = {"X-Token": api_key}
     url = f"https://api.monobank.ua/personal/statement/{account_id}/{from_time}/{to_time}"
@@ -121,7 +128,7 @@ def export_mono_transactions_to_google_sheets():
                     continue
 
                 dt = datetime.fromtimestamp(tx.get("time", 0))
-                timestamp = dt.strftime("%d.%m.%Y %H:%M:%S")
+                timestamp = convert_to_serial_date(dt)  # Ось тут конвертація у float serial date
                 amount = abs(format_amount(tx.get("amount", 0)) / 100)
                 balance = abs(format_amount(tx.get("balance", 0)) / 100)
                 description = tx.get("description", "")
@@ -165,3 +172,4 @@ def export_mono_transactions_to_google_sheets():
                 print(f"➕ Додано {len(rows_to_append)} нових транзакцій.")
             else:
                 print("✅ Нових транзакцій немає.")
+

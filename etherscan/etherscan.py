@@ -11,6 +11,16 @@ def format_amount(value):
         return round(float(value), 2)
     except (ValueError, TypeError):
         return 0.00
+    
+
+def timestamp_to_serial_date(ts: int):
+    try:
+        dt = datetime.fromtimestamp(ts)
+        epoch = datetime(1899, 12, 30)
+        delta = dt - epoch
+        return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
+    except Exception:
+        return ""
 
 
 def export_erc20_to_google_sheet():
@@ -87,7 +97,8 @@ def export_erc20_to_google_sheet():
         rows_to_append = []
 
         for tx in all_transactions:
-            timestamp = datetime.fromtimestamp(int(tx["timeStamp"])).strftime("%d.%m.%Y %H:%M:%S")
+            ts = int(tx["timeStamp"])
+            serial_date = timestamp_to_serial_date(ts)
             token_symbol = tx.get("tokenSymbol", "UNKNOWN")
             token_decimal = int(tx.get("tokenDecimal", "6"))
             from_address, to_address = tx.get("from", ""), tx.get("to", "")
@@ -102,7 +113,7 @@ def export_erc20_to_google_sheet():
             formatted_amount = abs(format_amount(amount))
 
             row = [""] * 25
-            row[0] = timestamp
+            row[0] = serial_date
             row[1] = "ERC20"
             row[3] = address
             row[4] = type_operation

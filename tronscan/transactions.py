@@ -12,6 +12,16 @@ def format_amount(value):
         return 0.0
 
 
+def timestamp_to_serial_date(ts: int):
+    try:
+        dt = datetime.fromtimestamp(ts)
+        epoch = datetime(1899, 12, 30)
+        delta = dt - epoch
+        return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
+    except Exception:
+        return ""
+
+
 def export_trc20_transactions_troscan_to_google_sheets():
     trc20_entries = CONFIG.get("TRC20", [])
     if not trc20_entries:
@@ -85,7 +95,8 @@ def export_trc20_transactions_troscan_to_google_sheets():
 
         address_lower = address.lower()
         for tx in all_transactions:
-            timestamp = datetime.fromtimestamp(tx["block_ts"] / 1000).strftime("%d.%m.%Y %H:%M:%S")
+            ts = int(tx["block_ts"] / 1000)
+            serial_date = timestamp_to_serial_date(ts)
             token = tx.get("token_info", {}).get("symbol", "")
             method = "TRC20"
             to_address = tx.get("to_address", "")
@@ -102,7 +113,7 @@ def export_trc20_transactions_troscan_to_google_sheets():
             address_counterparty = to_address if type_operation == "credit" else from_address
 
             new_row = [""] * 25
-            new_row[0] = timestamp
+            new_row[0] = serial_date
             new_row[1] = method
             new_row[3] = address
             new_row[4] = type_operation
