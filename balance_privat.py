@@ -64,7 +64,7 @@ def append_balance_rows_to_sheet(worksheet, balances: list, current_dt: datetime
             balance = float(str(b.get("balanceOutEq", "0")).replace(",", "."))
         except Exception:
             balance = 0.0
-        row[7] = b.get("ccy", "UAH")
+        row[7] = b.get("currency", "UAH")
         row[9] = balance
 
         new_rows.append(row)

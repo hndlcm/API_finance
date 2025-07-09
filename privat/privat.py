@@ -2,7 +2,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import config_manager
+from config_manager import config_manager, CURRENCY_CODES
 
 BASE_URL_TRANSACTIONS = "https://acp.privatbank.ua/api/statements/transactions"
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
@@ -123,7 +123,8 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         except Exception:
             new_row[6] = 0.0
 
-        new_row[7] = tx.get("CCY", "UAH")
+        currency = tx.get("CCY", "UAH")
+        new_row[7] = CURRENCY_CODES.get(currency, currency)
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
         try:

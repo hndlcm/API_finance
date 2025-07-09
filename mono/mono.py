@@ -1,7 +1,7 @@
 import time
 import requests
 from datetime import datetime, timedelta
-from config_manager import config_manager
+from config_manager import config_manager, CURRENCY_CODES
 from table import init_google_sheet
 
 
@@ -134,7 +134,6 @@ def export_mono_transactions_to_google_sheets():
                 balance = abs(format_amount(tx.get("balance", 0)) / 100)
                 description = tx.get("description", "")
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
-                currency_code = tx.get("currencyCode", "")
                 new_row = [""] * 25
                 new_row[0] = timestamp
                 new_row[1] = "monobank"
@@ -143,8 +142,10 @@ def export_mono_transactions_to_google_sheets():
                 new_row[4] = type_op
                 new_row[5] = amount
                 new_row[6] = amount
-                new_row[7] = "UAH" if currency_code == 980 else str(currency_code)
-                new_row[8] = 0
+                currency = tx.get("currencyCode")
+                print(currency)
+                new_row[7] = CURRENCY_CODES.get(currency, currency)
+                new_row[8] = tx.get("commissionRate", "")
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
                 new_row[11] = tx.get("counterName", "")

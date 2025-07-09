@@ -108,7 +108,7 @@ def export_erc20_to_google_sheet():
             except Exception:
                 amount = 0
 
-            type_operation = "debit" if to_address.lower() == address.lower() else "credit"
+            type_operation = "debit" if to_address == address else "credit"
             counterparty = to_address if type_operation == "credit" else from_address
             formatted_amount = abs(format_amount(amount))
 

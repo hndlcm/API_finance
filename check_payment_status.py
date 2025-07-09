@@ -13,15 +13,9 @@ def format_amount(value):
         return 0.00
 
 
-def convert_to_serial_date(date_str):
-    """Конвертує ISO-дату або дату з 'Z' у float для Google Sheets"""
-    try:
-        dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        epoch = datetime(1899, 12, 30)
-        delta = dt - epoch
-        return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
-    except Exception:
-        return date_str  # повертаємо як є, якщо не вдалося
+def datetime_to_serial_float(dt: datetime) -> float:
+    epoch = datetime(1899, 12, 30)
+    return (dt - epoch).total_seconds() / 86400
 
 
 def get_all_payment_statuses(start_date: str, end_date: str):
@@ -101,7 +95,12 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     for order in orders:
         new_row = [""] * 25
-        new_row[0] = convert_to_serial_date(order.get("pay_date", ""))
+        date_str = order.get("pay_date", "")
+        try:
+            dt = datetime.strptime(date_str, "%d.%m.%Y %H:%M:%S")
+            new_row[0] = datetime_to_serial_float(dt)
+        except Exception:
+            new_row[0] = date_str
         new_row[1] = "portmone"
         new_row[2] = order.get("payee_name", "")
         status = order.get("status", "")
