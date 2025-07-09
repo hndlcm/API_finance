@@ -181,17 +181,5 @@ def export_portmone_orders_full():
             print(f"❌ Неочікуваний формат замовлень за період {start_str} - {end_str}")
 
         current_start = current_end + timedelta(days=1)
-        time.sleep(1)
-
-    try:
-        worksheet.format("A2:A", {
-            "numberFormat": {
-                "type": "DATE_TIME",
-                "pattern": "dd.mm.yyyy hh:mm:ss"
-            }
-        })
-        print("🕒 Формат дати у колонці A встановлено.")
-    except Exception as e:
-        print(f"⚠️ Не вдалося встановити формат дати: {e}")
 
     print("✅ Експорт завершено.")
