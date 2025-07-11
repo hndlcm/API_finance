@@ -13,10 +13,39 @@ def format_amount(value):
 
 
 def convert_to_serial_date(dt: datetime) -> float:
-    """Конвертує datetime до числа формату Google Sheets (serial date)"""
     epoch = datetime(1899, 12, 30)
     delta = dt - epoch
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
+
+
+def get_mono_exchange_rates():
+    url = "https://api.monobank.ua/bank/currency"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"⚠️ Не вдалося отримати курс валют: {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"⚠️ Помилка при запиті курсу валют: {e}")
+        return []
+
+
+def convert_currency(amount, from_ccy, to_ccy, rates):
+    if from_ccy == to_ccy:
+        return amount
+    for rate in rates:
+        a = rate.get("currencyCodeA")
+        b = rate.get("currencyCodeB")
+        r = rate.get("rateSell") or rate.get("rateCross")
+
+        if a == from_ccy and b == to_ccy and r:
+            return round(amount * r, 2)
+        if b == from_ccy and a == to_ccy and r:
+            return round(amount / r, 2)
+    print(f"⚠️ Курс для {from_ccy}->{to_ccy} не знайдено")
+    return amount
 
 
 def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_retries=5):
@@ -26,9 +55,7 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
     wait_time = 2
 
     while retries <= max_retries:
-        # Затримка перед кожним запитом (щонайменше 60 сек)
         time.sleep(66)
-
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
             return response.json()
@@ -45,16 +72,11 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
 def get_monobank_accounts(api_key):
     headers = {"X-Token": api_key}
     url = "https://api.monobank.ua/personal/client-info"
-
-    # Затримка перед кожним запитом
     time.sleep(60)
-
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
-        name = data.get("name", "unknown")
-        accounts = data.get("accounts", [])
-        return name, accounts
+        return data.get("name", "unknown"), data.get("accounts", [])
     print(f"❌ Помилка отримання account-info: {response.status_code} - {response.text}")
     return "unknown", []
 
@@ -67,6 +89,7 @@ def export_mono_transactions_to_google_sheets():
         return
 
     worksheet = init_google_sheet()
+    rates = get_mono_exchange_rates()
 
     for item in mono_entries:
         api_key = item.get("api_token")
@@ -129,30 +152,35 @@ def export_mono_transactions_to_google_sheets():
                     continue
 
                 dt = datetime.fromtimestamp(tx.get("time", 0))
-                timestamp = convert_to_serial_date(dt)  # Ось тут конвертація у float serial date
+                timestamp = convert_to_serial_date(dt)
+
                 amount = abs(format_amount(tx.get("amount", 0)) / 100)
                 balance = abs(format_amount(tx.get("balance", 0)) / 100)
-                description = tx.get("description", "")
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
+
+                account_currency = tx.get("currencyCode")
+                operation_currency = tx.get("operationCurrencyCode", account_currency)
+
+                operation_amount = abs(format_amount(tx.get("operationAmount", tx.get("amount", 0))) / 100)
+                converted_amount = convert_currency(operation_amount, operation_currency, account_currency, rates)
+
                 new_row = [""] * 25
                 new_row[0] = timestamp
                 new_row[1] = "monobank"
                 new_row[2] = client_name
                 new_row[3] = iban
                 new_row[4] = type_op
-                new_row[5] = amount
-                new_row[6] = amount
-                currency = tx.get("currencyCode")
-                print(currency)
-                new_row[7] = CURRENCY_CODES.get(currency, currency)
-                new_row[8] = tx.get("commissionRate", "")
+                new_row[5] = converted_amount  # валюта рахунку
+                new_row[6] = operation_amount  # валюта операції
+                new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)
+                new_row[8] = round(tx.get("commissionRate", 0) / 100, 2) if tx.get("commissionRate")
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
                 new_row[11] = tx.get("counterName", "")
                 new_row[12] = tx.get("counterEdrpou", 0) if tx.get("counterEdrpou") else ""
                 new_row[13] = tx.get("counterIban", "")
                 new_row[14] = tx.get("mcc", "")
-                new_row[15] = description
+                new_row[15] = tx.get("description", "")
                 new_row[16] = tx_id
 
                 if tx_id in existing_tx_by_id:
