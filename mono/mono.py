@@ -130,12 +130,11 @@ def export_mono_transactions_to_google_sheets():
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
 
                 account_currency = account_info.get("account_currency")
-                print(account_currency)
                 operation_currency = tx.get("operationCurrencyCode", account_currency)
-                print(tx.get("operationCurrencyCode", ""))
                 
-                operation_amount = abs(format_amount(tx.get("operationAmount", tx.get("amount", 0))) / 100)
-                converted_amount = convert_currency(operation_amount, operation_currency, account_currency)
+                amount_value = tx.get("amount") / 100
+                operation_amount_value = tx.get("operationAmount") / 100
+
                 
 
                 new_row = [""] * 25
@@ -144,8 +143,8 @@ def export_mono_transactions_to_google_sheets():
                 new_row[2] = client_name
                 new_row[3] = iban
                 new_row[4] = type_op
-                new_row[5] = converted_amount  # валюта рахунку
-                new_row[6] = operation_amount  # валюта операції
+                new_row[5] = amount_value
+                new_row[6] = operation_amount_value  
                 new_row[7] = CURRENCY_CODES.get(operation_currency, operation_currency)
                 new_row[8] = abs(format_amount(tx.get("commissionRate", 0)) / 100)  # комісія
                 new_row[9] = balance
