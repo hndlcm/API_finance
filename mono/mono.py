@@ -37,13 +37,22 @@ def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_ret
 def get_monobank_accounts(api_key):
     headers = {"X-Token": api_key}
     url = "https://api.monobank.ua/personal/client-info"
-    time.sleep(60)
+    time.sleep(1)
     response = requests.get(url, headers=headers)
     if response.status_code == 200:
         data = response.json()
-        return data.get("name", "unknown"), data.get("accounts", [])
+        name = data.get("name", "unknown")
+        accounts = data.get("accounts", [])
+        account_map = {}
+        for acc in accounts:
+            account_map[acc["id"]] = {
+                "iban": acc.get("iban", f"Mono-{acc['id']}"),
+                "account_currency": acc.get("currencyCode")
+            }
+        return name, account_map
     print(f"❌ Помилка отримання account-info: {response.status_code} - {response.text}")
-    return "unknown", []
+    return "unknown", {}
+
 
 
 def export_mono_transactions_to_google_sheets():
@@ -71,9 +80,8 @@ def export_mono_transactions_to_google_sheets():
             print("❌ Не знайдено рахунків для токена.")
             continue
 
-        for account in accounts:
-            account_id = account.get("id")
-            iban = account.get("iban", f"Mono-{account_id}")
+        for account_id, account_info in accounts.items():
+            iban = account_info.get("iban", f"Mono-{account_id}")
             print(f"\n📥 Рахунок: {iban}, період: {from_dt.date()} - {to_dt.date()}")
 
             all_transactions = []
@@ -119,18 +127,16 @@ def export_mono_transactions_to_google_sheets():
                 dt = datetime.fromtimestamp(tx.get("time", 0))
                 timestamp = convert_to_serial_date(dt)
 
-                amount = abs(format_amount(tx.get("amount", 0)) / 100)
                 balance = abs(format_amount(tx.get("balance", 0)) / 100)
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
 
-                account_currency = tx.get("currencyCode")
+                account_currency = account_info.get("account_currency")
                 operation_currency = tx.get("operationCurrencyCode", account_currency)
-
+                
                 operation_amount = abs(format_amount(tx.get("operationAmount", tx.get("amount", 0))) / 100)
                 converted_amount = convert_currency(operation_amount, operation_currency, account_currency, rates)
 
                 new_row = [""] * 25
-                
                 new_row[0] = timestamp
                 new_row[1] = "monobank"
                 new_row[2] = client_name
@@ -138,7 +144,7 @@ def export_mono_transactions_to_google_sheets():
                 new_row[4] = type_op
                 new_row[5] = converted_amount  # валюта рахунку
                 new_row[6] = operation_amount  # валюта операції
-                new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)
+                new_row[7] = CURRENCY_CODES.get(operation_currency, operation_currency)
                 new_row[8] = abs(format_amount(tx.get("commissionRate", 0)) / 100)  # комісія
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
