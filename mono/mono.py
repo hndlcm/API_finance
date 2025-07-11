@@ -138,7 +138,11 @@ def export_mono_transactions_to_google_sheets():
                 new_row[5] = converted_amount  # валюта рахунку
                 new_row[6] = operation_amount  # валюта операції
                 new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)
+<<<<<<< HEAD
                 new_row[8] = abs(format_amount(tx.get("commissionRate", 0)) / 100)  # комісія
+=======
+                new_row[8] = abs(format_amount(tx.get(commissionRate, 0)) / 100)  # комісія
+>>>>>>> e9ea2daa1881523a11446fb0db3781fbf421fb21
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
                 new_row[11] = tx.get("counterName", "")
