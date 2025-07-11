@@ -63,7 +63,6 @@ def export_mono_transactions_to_google_sheets():
         return
 
     worksheet = init_google_sheet()
-    rates = get_mono_exchange_rates()
 
     for item in mono_entries:
         api_key = item.get("api_token")
@@ -131,10 +130,13 @@ def export_mono_transactions_to_google_sheets():
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
 
                 account_currency = account_info.get("account_currency")
+                print(account_currency)
                 operation_currency = tx.get("operationCurrencyCode", account_currency)
+                print(tx.get("operationCurrencyCode", ""))
                 
                 operation_amount = abs(format_amount(tx.get("operationAmount", tx.get("amount", 0))) / 100)
-                converted_amount = convert_currency(operation_amount, operation_currency, account_currency, rates)
+                converted_amount = convert_currency(operation_amount, operation_currency, account_currency)
+                
 
                 new_row = [""] * 25
                 new_row[0] = timestamp

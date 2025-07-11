@@ -12,19 +12,22 @@ def format_amount(value):
         return 0.0
 
 def get_mono_exchange_rates():
-    response = requests.get("https://api.monobank.ua/bank/currency")
-    if response.status_code == 200:
-        data = response.json()
-        for rate in data:
-            print(rate)
-    else:
-        print(f"Помилка: {response.status_code}")
+    try:
+        response = requests.get("https://api.monobank.ua/bank/currency")
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"❌ MonoBank API повернув статус {response.status_code}")
+            return []
+    except Exception as e:
+        print(f"❌ Помилка під час запиту курсів: {e}")
+        return []
 
 
-def convert_currency(amount, from_ccy, to_ccy, rates):
+def convert_currency(amount, from_ccy, to_ccy):
     if from_ccy == to_ccy:
         return amount
-    for rate in rates:
+    for rate in get_mono_exchange_rates():
         a = rate.get("currencyCodeA")
         b = rate.get("currencyCodeB")
         r = rate.get("rateSell") or rate.get("rateCross")
@@ -34,3 +37,5 @@ def convert_currency(amount, from_ccy, to_ccy, rates):
             return round(amount / r, 2)
     print(f"⚠️ Курс для {from_ccy}->{to_ccy} не знайдено")
     return amount
+
+
