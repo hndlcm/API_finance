@@ -130,6 +130,7 @@ def export_mono_transactions_to_google_sheets():
                 converted_amount = convert_currency(operation_amount, operation_currency, account_currency, rates)
 
                 new_row = [""] * 25
+                
                 new_row[0] = timestamp
                 new_row[1] = "monobank"
                 new_row[2] = client_name
