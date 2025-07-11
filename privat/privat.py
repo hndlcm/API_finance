@@ -3,13 +3,11 @@ import requests
 from datetime import datetime, timedelta
 from table import init_google_sheet
 from config_manager import config_manager, CURRENCY_CODES
+from utils import datetime_to_serial_float, format_amount, get_mono_exchange_rates, convert_currency
 
 BASE_URL_TRANSACTIONS = "https://acp.privatbank.ua/api/statements/transactions"
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
-def datetime_to_serial_float(dt: datetime) -> float:
-    epoch = datetime(1899, 12, 30)
-    return (dt - epoch).total_seconds() / 86400  # days + fractional part
 
 def fetch_transactions(api_token, start_date: str, end_date: str, limit: int = 100) -> list:
     headers = {
@@ -49,6 +47,7 @@ def fetch_transactions(api_token, start_date: str, end_date: str, limit: int = 1
     print(f"\n📄 Загальна кількість транзакцій: {len(all_transactions)}")
     return all_transactions
 
+
 def fetch_balances(api_token: str) -> list:
     headers = {
         "User-Agent": "MyApp/1.0",
@@ -82,7 +81,8 @@ def fetch_balances(api_token: str) -> list:
 
     return all_balances
 
-def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict):
+
+def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict, exchange_rates):
     try:
         existing_rows = worksheet.get_all_values()
     except Exception:
@@ -110,21 +110,21 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
             new_row[0] = datetime_str.strip()
 
         account = tx.get("AUT_MY_ACC", "")
+        account_currency = tx.get("CCY", "UAH")
+        operation_currency = tx.get("CCY_E", account_currency)
+
         new_row[1] = "privatbank"
         new_row[2] = acc_name_map.get(account, "")
         new_row[3] = account
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
-        try:
-            new_row[5] = float(tx.get("SUM", "0").replace(",", "."))
-        except Exception:
-            new_row[5] = 0.0
-        try:
-            new_row[6] = float(tx.get("SUM_E", "0").replace(",", "."))
-        except Exception:
-            new_row[6] = 0.0
 
-        currency = tx.get("CCY", "UAH")
-        new_row[7] = CURRENCY_CODES.get(currency, currency)
+        amount_operation = format_amount(tx.get("SUM_E", "0").replace(",", "."))
+        amount_converted = convert_currency(amount_operation, operation_currency, account_currency, exchange_rates)
+
+        new_row[5] = amount_converted  # у валюті рахунку
+        new_row[6] = amount_operation  # у валюті операції
+
+        new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)
         new_row[10] = tx.get("OSND", "")
         new_row[11] = tx.get("AUT_CNTR_NAM", "")
         try:
@@ -156,6 +156,7 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
     else:
         print("✅ Нових транзакцій немає.")
 
+
 def privat_export():
     CONFIG = config_manager()
     tokens = CONFIG.get("PRIVAT", [])
@@ -165,6 +166,7 @@ def privat_export():
         return
 
     worksheet = init_google_sheet()
+    exchange_rates = get_mono_exchange_rates()
 
     for entry in tokens:
         api_token = entry.get("api_token")
@@ -189,5 +191,5 @@ def privat_export():
 
         acc_name_map = {b.get("acc"): b.get("nameACC") for b in balances}
 
-        write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map)
+        write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map, exchange_rates)
 

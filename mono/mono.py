@@ -3,49 +3,14 @@ import requests
 from datetime import datetime, timedelta
 from config_manager import config_manager, CURRENCY_CODES
 from table import init_google_sheet
+from utils import datetime_to_serial_float, format_amount, get_mono_exchange_rates, convert_currency
 
-
-def format_amount(value):
-    try:
-        return round(float(value), 2)
-    except (ValueError, TypeError):
-        return 0.0
 
 
 def convert_to_serial_date(dt: datetime) -> float:
     epoch = datetime(1899, 12, 30)
     delta = dt - epoch
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
-
-
-def get_mono_exchange_rates():
-    url = "https://api.monobank.ua/bank/currency"
-    try:
-        response = requests.get(url)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"⚠️ Не вдалося отримати курс валют: {response.status_code}")
-            return []
-    except Exception as e:
-        print(f"⚠️ Помилка при запиті курсу валют: {e}")
-        return []
-
-
-def convert_currency(amount, from_ccy, to_ccy, rates):
-    if from_ccy == to_ccy:
-        return amount
-    for rate in rates:
-        a = rate.get("currencyCodeA")
-        b = rate.get("currencyCodeB")
-        r = rate.get("rateSell") or rate.get("rateCross")
-
-        if a == from_ccy and b == to_ccy and r:
-            return round(amount * r, 2)
-        if b == from_ccy and a == to_ccy and r:
-            return round(amount / r, 2)
-    print(f"⚠️ Курс для {from_ccy}->{to_ccy} не знайдено")
-    return amount
 
 
 def fetch_monobank_transactions(account_id, api_key, from_time, to_time, max_retries=5):
@@ -173,7 +138,7 @@ def export_mono_transactions_to_google_sheets():
                 new_row[5] = converted_amount  # валюта рахунку
                 new_row[6] = operation_amount  # валюта операції
                 new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)
-                new_row[8] = round(tx.get("commissionRate", 0) / 100, 2) if tx.get("commissionRate")
+                new_row[8] = abs(format_amount(tx.get(commissionRate, 0)) / 100)  # комісія
                 new_row[9] = balance
                 new_row[10] = tx.get("comment", "")
                 new_row[11] = tx.get("counterName", "")
