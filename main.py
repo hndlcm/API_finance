@@ -4,7 +4,7 @@ from facturow.factura import export_fakturownia_all_to_google_sheets
 from facturow.bitfactura import export_bitfactura_invoices_to_google_sheets, export_bitfactura_all_to_google_sheets
 from etherscan.etherscan import export_erc20_to_google_sheet
 from tronscan.transactions import export_trc20_transactions_troscan_to_google_sheets
-from check_payment_status import export_portmone_orders_full
+from portmone.check_payment_status import export_portmone_orders_full
 from mono.mono import export_mono_transactions_to_google_sheets
 from privat.privat import privat_export
 

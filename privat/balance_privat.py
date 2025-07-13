@@ -1,5 +1,8 @@
 import time
 import requests
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from datetime import datetime, timedelta
 from pytz import timezone
 from table import init_google_sheet
