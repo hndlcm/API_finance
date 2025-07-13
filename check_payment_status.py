@@ -3,7 +3,7 @@ import time
 import json
 from datetime import datetime, timedelta
 from table import init_google_sheet
-from config_manager import  config_manager
+from config_manager import config_manager
 
 
 def format_amount(value):
@@ -52,9 +52,6 @@ def get_all_payment_statuses(start_date: str, end_date: str):
         response.raise_for_status()
         data = response.json()
 
-        with open("portmone_all_orders.json", "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-
         if isinstance(data, dict) and "result" in data:
             if isinstance(data["result"], dict) and "orders" in data["result"]:
                 return data["result"]["orders"]
@@ -69,9 +66,6 @@ def get_all_payment_statuses(start_date: str, end_date: str):
             return []
 
     except requests.exceptions.RequestException as e:
-        error_data = {"status": "error", "message": str(e)}
-        with open("portmone_error.json", "w", encoding="utf-8") as f:
-            json.dump(error_data, f, ensure_ascii=False, indent=4)
         print(f"❌ Помилка запиту Portmone: {e}")
         return []
 
