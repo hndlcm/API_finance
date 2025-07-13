@@ -118,10 +118,10 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
         new_row[3] = account
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
 
-        amount_operation = format_amount(tx.get("SUM_E", "0").replace(",", "."))
-        amount_converted = convert_currency(amount_operation, operation_currency, account_currency)
+        amount_operation = format_amount(tx.get("SUM", "0").replace(",", "."))
 
-        new_row[5] = amount_converted  # у валюті рахунку
+
+        new_row[5] =  format_amount(tx.get("SUM_E", "0").replace(",", "."))
         new_row[6] = amount_operation  # у валюті операції
 
         new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)

@@ -132,8 +132,8 @@ def export_mono_transactions_to_google_sheets():
                 account_currency = account_info.get("account_currency")
                 operation_currency = tx.get("operationCurrencyCode", account_currency)
                 
-                amount_value = tx.get("amount") / 100
-                operation_amount_value = tx.get("operationAmount") / 100
+                amount_value = abs(tx.get("amount", 0)) / 100
+                operation_amount_value = abs(tx.get("operationAmount", 0)) / 100
 
                 
 
