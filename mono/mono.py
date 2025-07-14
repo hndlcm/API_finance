@@ -130,7 +130,7 @@ def export_mono_transactions_to_google_sheets():
                 type_op = "debit" if tx.get("amount", 0) < 0 else "credit"
 
                 account_currency = account_info.get("account_currency")
-                operation_currency = tx.get("operationCurrencyCode", account_currency)
+                operation_currency = tx.get("currencyCode", account_currency)
                 
                 amount_value = abs(tx.get("amount", 0)) / 100
                 operation_amount_value = abs(tx.get("operationAmount", 0)) / 100
