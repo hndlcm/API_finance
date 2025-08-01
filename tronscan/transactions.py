@@ -1,8 +1,10 @@
 import time
-import requests
 from datetime import datetime, timedelta
-from table import init_google_sheet
+
+import requests
+
 from config_manager import config_manager
+from table import init_google_sheet
 
 
 def format_amount(value):
@@ -40,7 +42,9 @@ def export_trc20_transactions_troscan_to_google_sheets():
         from_date = datetime.now().date() - timedelta(days=days)
         to_date = datetime.now().date()
 
-        print(f"\n📥 Обробка TRC20 адреси: {address}, діапазон дат: {from_date} - {to_date}")
+        print(
+            f"\n📥 Обробка TRC20 адреси: {address}, діапазон дат: {from_date} - {to_date}"
+        )
 
         limit = 50
         start = 0
@@ -74,9 +78,15 @@ def export_trc20_transactions_troscan_to_google_sheets():
 
             all_transactions.extend(filtered_txs)
 
-            print(f"🔄 Отримано {len(filtered_txs)} транзакцій (загалом: {len(all_transactions)})")
+            print(
+                f"🔄 Отримано {len(filtered_txs)} транзакцій (загалом: {len(all_transactions)})"
+            )
 
-            if len(transactions) < limit or any(datetime.fromtimestamp(tx["block_ts"] / 1000).date() < from_date for tx in transactions):
+            if len(transactions) < limit or any(
+                datetime.fromtimestamp(tx["block_ts"] / 1000).date()
+                < from_date
+                for tx in transactions
+            ):
                 break
 
             start += limit
@@ -85,11 +95,16 @@ def export_trc20_transactions_troscan_to_google_sheets():
         existing_rows = worksheet.get_all_values()
         header_offset = 1
         existing_tx_by_hash = {}
-        for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
+        for i, row in enumerate(
+            existing_rows[header_offset:], start=header_offset + 1
+        ):
             full_row = row + [""] * (25 - len(row))
             tx_hash = full_row[16]
             if tx_hash:
-                existing_tx_by_hash[tx_hash] = {"row_number": i, "row_data": full_row}
+                existing_tx_by_hash[tx_hash] = {
+                    "row_number": i,
+                    "row_data": full_row,
+                }
 
         rows_to_update = []
         rows_to_append = []
@@ -105,13 +120,21 @@ def export_trc20_transactions_troscan_to_google_sheets():
             tx_hash = tx.get("transaction_id", "")
 
             try:
-                amount = float(tx.get("quant", 0)) / 10 ** int(tx.get("token_info", {}).get("decimals", 6))
+                amount = float(tx.get("quant", 0)) / 10 ** int(
+                    tx.get("token_info", {}).get("decimals", 6)
+                )
             except Exception:
                 amount = 0
 
             fee = 0
-            type_operation = "debit" if to_address.lower() == address_lower.lower() else "credit"
-            address_counterparty = to_address if type_operation == "credit" else from_address
+            type_operation = (
+                "debit"
+                if to_address.lower() == address_lower.lower()
+                else "credit"
+            )
+            address_counterparty = (
+                to_address if type_operation == "credit" else from_address
+            )
 
             new_row = [""] * 25
             new_row[0] = serial_date
@@ -133,7 +156,10 @@ def export_trc20_transactions_troscan_to_google_sheets():
                 rows_to_append.append(new_row)
 
         if rows_to_update:
-            batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
+            batch_data = [
+                {"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
+                for row_number, row_data in rows_to_update
+            ]
             worksheet.batch_update(batch_data)
             print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
@@ -145,7 +171,12 @@ def export_trc20_transactions_troscan_to_google_sheets():
             if needed_rows > current_max_rows:
                 worksheet.add_rows(needed_rows - current_max_rows)
 
-            worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append)
-            print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
+            worksheet.update(
+                f"A{start_row}:Y{start_row + len(rows_to_append) - 1}",
+                rows_to_append,
+            )
+            print(
+                f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}."
+            )
         else:
             print("✅ Нових транзакцій для додавання немає.")

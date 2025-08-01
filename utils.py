@@ -1,15 +1,19 @@
-import requests
 from datetime import datetime
+
+import requests
+
 
 def datetime_to_serial_float(dt: datetime) -> float:
     epoch = datetime(1899, 12, 30)
     return (dt - epoch).total_seconds() / 86400
+
 
 def format_amount(value):
     try:
         return round(float(value), 2)
     except (ValueError, TypeError):
         return 0.0
+
 
 def get_mono_exchange_rates():
     try:
@@ -37,5 +41,3 @@ def convert_currency(amount, from_ccy, to_ccy):
             return round(amount / r, 2)
     print(f"⚠️ Курс для {from_ccy}->{to_ccy} не знайдено")
     return amount
-
-

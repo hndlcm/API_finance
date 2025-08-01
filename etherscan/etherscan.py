@@ -1,16 +1,19 @@
-import requests
 import time
 from datetime import datetime, timedelta
+
 import gspread
+import requests
 from oauth2client.service_account import ServiceAccountCredentials
+
 from config_manager import config_manager
+
 
 def format_amount(value):
     try:
         return round(float(value), 2)
     except (ValueError, TypeError):
         return 0.00
-    
+
 
 def timestamp_to_serial_date(ts: int):
     try:
@@ -23,11 +26,16 @@ def timestamp_to_serial_date(ts: int):
 
 
 def export_erc20_to_google_sheet():
-    CONFIG = config_manager() 
+    CONFIG = config_manager()
     # Авторизація Google Sheets
     sheet_conf = CONFIG["google_sheet"]
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name(sheet_conf["credentials_path"], scope)
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        sheet_conf["credentials_path"], scope
+    )
     client = gspread.authorize(creds)
     spreadsheet = client.open_by_url(sheet_conf["spreadsheet_url"])
     worksheet = spreadsheet.worksheet(sheet_conf["worksheet_name"])
@@ -40,11 +48,16 @@ def export_erc20_to_google_sheet():
     existing_rows = worksheet.get_all_values()
     header_offset = 1
     existing_tx_by_hash = {}
-    for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
+    for i, row in enumerate(
+        existing_rows[header_offset:], start=header_offset + 1
+    ):
         full_row = row + [""] * (25 - len(row))
         tx_hash = full_row[16]
         if tx_hash:
-            existing_tx_by_hash[tx_hash] = {"row_number": i, "row_data": full_row}
+            existing_tx_by_hash[tx_hash] = {
+                "row_number": i,
+                "row_data": full_row,
+            }
 
     for entry in erc20_entries:
         address = entry["address"]
@@ -54,7 +67,9 @@ def export_erc20_to_google_sheet():
         from_date = datetime.now().date() - timedelta(days=days)
         to_date = datetime.now().date()
 
-        print(f"\n🔍 Обробка адреси {address} ({entry.get('name', '')}), діапазон дат: {from_date} - {to_date}")
+        print(
+            f"\n🔍 Обробка адреси {address} ({entry.get('name', '')}), діапазон дат: {from_date} - {to_date}"
+        )
 
         page = 1
         all_transactions = []
@@ -85,9 +100,15 @@ def export_erc20_to_google_sheet():
                     break
 
             all_transactions.extend(filtered_transactions)
-            print(f"🔄 Сторінка {page}: Отримано {len(filtered_transactions)} транзакцій (всього: {len(all_transactions)})")
+            print(
+                f"🔄 Сторінка {page}: Отримано {len(filtered_transactions)} транзакцій (всього: {len(all_transactions)})"
+            )
 
-            if len(transactions) < 100 or any(datetime.utcfromtimestamp(int(tx.get("timeStamp", 0))).date() > to_date for tx in transactions):
+            if len(transactions) < 100 or any(
+                datetime.utcfromtimestamp(int(tx.get("timeStamp", 0))).date()
+                > to_date
+                for tx in transactions
+            ):
                 break
 
             page += 1
@@ -104,12 +125,14 @@ def export_erc20_to_google_sheet():
             from_address, to_address = tx.get("from", ""), tx.get("to", "")
             tx_hash = tx.get("hash", "")
             try:
-                amount = int(tx.get("value", "0")) / (10 ** token_decimal)
+                amount = int(tx.get("value", "0")) / (10**token_decimal)
             except Exception:
                 amount = 0
 
             type_operation = "debit" if to_address == address else "credit"
-            counterparty = to_address if type_operation == "credit" else from_address
+            counterparty = (
+                to_address if type_operation == "credit" else from_address
+            )
             formatted_amount = abs(format_amount(amount))
 
             row = [""] * 25
@@ -132,7 +155,10 @@ def export_erc20_to_google_sheet():
 
         # Оновлення рядків
         if rows_to_update:
-            batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
+            batch_data = [
+                {"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
+                for row_number, row_data in rows_to_update
+            ]
             worksheet.batch_update(batch_data)
             print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
@@ -148,6 +174,8 @@ def export_erc20_to_google_sheet():
                 print(f"➕ Додано {rows_to_add} нових рядків до аркуша.")
 
             worksheet.update(f"A{start_row}:Y{end_row}", rows_to_append)
-            print(f"✅ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
+            print(
+                f"✅ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}."
+            )
         else:
             print("✅ Нових транзакцій для додавання немає.")

@@ -1,12 +1,16 @@
-import time
-import requests
-import sys
 import os
+import sys
+import time
+
+import requests
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from datetime import datetime, timedelta
+
 from pytz import timezone
-from table import init_google_sheet
+
 from config_manager import config_manager
+from table import init_google_sheet
 
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
@@ -15,13 +19,15 @@ def fetch_balances(api_token: str) -> list:
     headers = {
         "User-Agent": "MyApp/1.0",
         "token": api_token,
-        "Content-Type": "application/json;charset=cp1251"
+        "Content-Type": "application/json;charset=cp1251",
     }
     params = {"limit": 100}
     all_balances = []
 
     while True:
-        response = requests.get(BASE_URL_BALANCES, headers=headers, params=params)
+        response = requests.get(
+            BASE_URL_BALANCES, headers=headers, params=params
+        )
         if response.status_code != 200:
             print("❌ Помилка запиту balance:", response.status_code)
             print(response.text)
@@ -52,7 +58,9 @@ def convert_to_serial_date(dt: datetime) -> float:
     return delta.days + (delta.seconds + delta.microseconds / 1e6) / 86400
 
 
-def append_balance_rows_to_sheet(worksheet, balances: list, current_dt: datetime):
+def append_balance_rows_to_sheet(
+    worksheet, balances: list, current_dt: datetime
+):
     current_serial = convert_to_serial_date(current_dt)
     new_rows = []
 
@@ -106,7 +114,9 @@ def wait_until_5am_kyiv():
         if now >= next_run:
             next_run += timedelta(days=1)
         wait_seconds = (next_run - now).total_seconds()
-        print(f"🕔 Очікуємо до {next_run.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv)...")
+        print(
+            f"🕔 Очікуємо до {next_run.strftime('%Y-%m-%d %H:%M:%S')} (Kyiv)..."
+        )
         time.sleep(wait_seconds)
         run_balance_update()
 

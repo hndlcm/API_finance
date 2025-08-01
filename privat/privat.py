@@ -1,29 +1,35 @@
 import time
-import requests
 from datetime import datetime, timedelta
+
+import requests
+
+from config_manager import CURRENCY_CODES, config_manager
 from table import init_google_sheet
-from config_manager import config_manager, CURRENCY_CODES
-from utils import datetime_to_serial_float, format_amount, get_mono_exchange_rates, convert_currency
+from utils import (
+    datetime_to_serial_float,
+    format_amount,
+    get_mono_exchange_rates,
+)
 
 BASE_URL_TRANSACTIONS = "https://acp.privatbank.ua/api/statements/transactions"
 BASE_URL_BALANCES = "https://acp.privatbank.ua/api/statements/balance/final"
 
 
-def fetch_transactions(api_token, start_date: str, end_date: str, limit: int = 100) -> list:
+def fetch_transactions(
+    api_token, start_date: str, end_date: str, limit: int = 100
+) -> list:
     headers = {
         "User-Agent": "MyApp/1.0",
         "token": api_token,
-        "Content-Type": "application/json;charset=cp1251"
+        "Content-Type": "application/json;charset=cp1251",
     }
-    params = {
-        "startDate": start_date,
-        "endDate": end_date,
-        "limit": limit
-    }
+    params = {"startDate": start_date, "endDate": end_date, "limit": limit}
     all_transactions = []
 
     while True:
-        response = requests.get(BASE_URL_TRANSACTIONS, headers=headers, params=params)
+        response = requests.get(
+            BASE_URL_TRANSACTIONS, headers=headers, params=params
+        )
         if response.status_code != 200:
             print("❌ Помилка запиту:", response.status_code)
             print(response.text)
@@ -52,13 +58,15 @@ def fetch_balances(api_token: str) -> list:
     headers = {
         "User-Agent": "MyApp/1.0",
         "token": api_token,
-        "Content-Type": "application/json;charset=cp1251"
+        "Content-Type": "application/json;charset=cp1251",
     }
     params = {"limit": 100}
     all_balances = []
 
     while True:
-        response = requests.get(BASE_URL_BALANCES, headers=headers, params=params)
+        response = requests.get(
+            BASE_URL_BALANCES, headers=headers, params=params
+        )
         if response.status_code != 200:
             print("❌ Помилка запиту balance:", response.status_code)
             print(response.text)
@@ -82,7 +90,9 @@ def fetch_balances(api_token: str) -> list:
     return all_balances
 
 
-def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_map: dict, exchange_rates):
+def write_privat_transactions_to_sheet(
+    worksheet, transactions: list, acc_name_map: dict, exchange_rates
+):
     try:
         existing_rows = worksheet.get_all_values()
     except Exception:
@@ -92,9 +102,14 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
 
     header_offset = 1
     existing_tx_by_id = {}
-    for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
+    for i, row in enumerate(
+        existing_rows[header_offset:], start=header_offset + 1
+    ):
         if len(row) > 16 and row[16]:
-            existing_tx_by_id[row[16]] = {"row_number": i, "row_data": row + [""] * (25 - len(row))}
+            existing_tx_by_id[row[16]] = {
+                "row_number": i,
+                "row_data": row + [""] * (25 - len(row)),
+            }
 
     rows_to_update = []
     rows_to_append = []
@@ -111,14 +126,14 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
 
         account = tx.get("AUT_MY_ACC", "")
         account_currency = tx.get("CCY", "UAH")
-        operation_currency = tx.get("CCY_E", account_currency)
+        #operation_currency = tx.get("CCY_E", account_currency)
 
         new_row[1] = "privatbank"
         new_row[2] = acc_name_map.get(account, "")
         new_row[3] = account
         new_row[4] = "debit" if tx.get("TRANTYPE") == "D" else "credit"
         amount_operation = format_amount(tx.get("SUM", "0").replace(",", "."))
-        new_row[5] =  format_amount(tx.get("SUM_E", "0").replace(",", "."))
+        new_row[5] = format_amount(tx.get("SUM_E", "0").replace(",", "."))
         new_row[6] = amount_operation  # у валюті операції
 
         new_row[7] = CURRENCY_CODES.get(account_currency, account_currency)
@@ -142,14 +157,23 @@ def write_privat_transactions_to_sheet(worksheet, transactions: list, acc_name_m
             rows_to_append.append(new_row)
 
     if rows_to_update:
-        batch_data = [{"range": f"A{row_number}:Y{row_number}", "values": [row_data]} for row_number, row_data in rows_to_update]
+        batch_data = [
+            {"range": f"A{row_number}:Y{row_number}", "values": [row_data]}
+            for row_number, row_data in rows_to_update
+        ]
         worksheet.batch_update(batch_data, value_input_option="USER_ENTERED")
         print(f"🔁 Оновлено {len(rows_to_update)} транзакцій.")
 
     if rows_to_append:
         start_row = len(existing_rows) + 1
-        worksheet.update(f"A{start_row}:Y{start_row + len(rows_to_append) - 1}", rows_to_append, value_input_option="USER_ENTERED")
-        print(f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}.")
+        worksheet.update(
+            f"A{start_row}:Y{start_row + len(rows_to_append) - 1}",
+            rows_to_append,
+            value_input_option="USER_ENTERED",
+        )
+        print(
+            f"➕ Додано {len(rows_to_append)} нових транзакцій починаючи з рядка {start_row}."
+        )
     else:
         print("✅ Нових транзакцій немає.")
 
@@ -179,7 +203,9 @@ def privat_export():
         from_date = from_date_dt.strftime("%d-%m-%Y")
         to_date = to_date_dt.strftime("%d-%m-%Y")
 
-        print(f"\n📆 Обробка транзакцій за останні {days} днів: з {from_date} до {to_date}")
+        print(
+            f"\n📆 Обробка транзакцій за останні {days} днів: з {from_date} до {to_date}"
+        )
 
         transactions = fetch_transactions(api_token, from_date, to_date)
 
@@ -188,5 +214,6 @@ def privat_export():
 
         acc_name_map = {b.get("acc"): b.get("nameACC") for b in balances}
 
-        write_privat_transactions_to_sheet(worksheet, transactions, acc_name_map, exchange_rates)
-
+        write_privat_transactions_to_sheet(
+            worksheet, transactions, acc_name_map, exchange_rates
+        )

@@ -1,9 +1,10 @@
-import requests
 import time
-import json
 from datetime import datetime, timedelta
-from table import init_google_sheet
+
+import requests
+
 from config_manager import config_manager
+from table import init_google_sheet
 
 
 def format_amount(value):
@@ -28,7 +29,9 @@ def get_all_payment_statuses(start_date: str, end_date: str):
     PASSWORD = portmone_config.get("password")
 
     if not (PAYEE_ID and LOGIN and PASSWORD):
-        print("❌ В конфігурації не задані дані Portmone (login, password, payee_id)")
+        print(
+            "❌ В конфігурації не задані дані Portmone (login, password, payee_id)"
+        )
         return []
 
     payload = {
@@ -40,9 +43,9 @@ def get_all_payment_statuses(start_date: str, end_date: str):
                 "payeeId": PAYEE_ID,
                 "id": "123",
                 "startDate": start_date,
-                "endDate": end_date
+                "endDate": end_date,
             }
-        }
+        },
     }
 
     headers = {"Content-Type": "application/json"}
@@ -80,9 +83,14 @@ def write_orders_to_sheet(worksheet, orders: list):
 
     header_offset = 1
     existing_orders_by_id = {}
-    for i, row in enumerate(existing_rows[header_offset:], start=header_offset + 1):
+    for i, row in enumerate(
+        existing_rows[header_offset:], start=header_offset + 1
+    ):
         if len(row) > 16 and row[16]:
-            existing_orders_by_id[row[16]] = {"row_number": i, "row_data": row + [""] * (25 - len(row))}
+            existing_orders_by_id[row[16]] = {
+                "row_number": i,
+                "row_data": row + [""] * (25 - len(row)),
+            }
 
     rows_to_update = []
     rows_to_append = []
@@ -98,16 +106,26 @@ def write_orders_to_sheet(worksheet, orders: list):
         new_row[1] = "portmone"
         new_row[2] = order.get("payee_name", "")
         status = order.get("status", "")
-        new_row[4] = "debit" if status == "PAYED" else "invoice" if status == "CREATED" else status
+        new_row[4] = (
+            "debit"
+            if status == "PAYED"
+            else "invoice"
+            if status == "CREATED"
+            else status
+        )
         amount = abs(format_amount(order.get("billAmount")))
         new_row[5] = amount
         new_row[6] = amount
         new_row[7] = "UAH"
         new_row[8] = abs(format_amount(order.get("payee_commission")))
         new_row[10] = order.get("description", "")
-        new_row[11] = f'{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}'
+        new_row[
+            11
+        ] = f'{order.get("cardBankName", "")}, {order.get("cardTypeName", "")}, {order.get("gateType", "")}'
         new_row[13] = order.get("cardMask", "")
-        new_row[15] = f'{order.get("errorCode", "")}, {order.get("errorMessage", "")}'
+        new_row[
+            15
+        ] = f'{order.get("errorCode", "")}, {order.get("errorMessage", "")}'
         new_row[16] = order.get("shopBillId", "")
 
         shop_bill_id = new_row[16]
@@ -132,9 +150,11 @@ def write_orders_to_sheet(worksheet, orders: list):
         worksheet.update(
             f"A{start_row}:Y{start_row + len(rows_to_append) - 1}",
             rows_to_append,
-            value_input_option="USER_ENTERED"
+            value_input_option="USER_ENTERED",
         )
-        print(f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}.")
+        print(
+            f"➕ Додано {len(rows_to_append)} нових транзакцій з рядка {start_row}."
+        )
     else:
         print("✅ Нових транзакцій для додавання немає.")
 
@@ -150,7 +170,9 @@ def export_portmone_orders_full():
     try:
         days = int(days)
     except Exception:
-        print(f"⚠️ Невірне значення days у конфігурації: {days}, використовую 5 днів")
+        print(
+            f"⚠️ Невірне значення days у конфігурації: {days}, використовую 5 днів"
+        )
         days = 5
 
     end = datetime.now()
@@ -171,7 +193,9 @@ def export_portmone_orders_full():
         if isinstance(orders, list):
             write_orders_to_sheet(worksheet, orders)
         else:
-            print(f"❌ Неочікуваний формат замовлень за період {start_str} - {end_str}")
+            print(
+                f"❌ Неочікуваний формат замовлень за період {start_str} - {end_str}"
+            )
 
         current_start = current_end + timedelta(days=1)
 
