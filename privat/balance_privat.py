@@ -1,13 +1,8 @@
-import os
-import sys
 import time
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import requests
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from datetime import datetime, timedelta
-
-from pytz import timezone
 
 from config_manager import config_manager
 from table import init_google_sheet
@@ -95,7 +90,7 @@ def run_balance_update():
         return
 
     worksheet = init_google_sheet()
-    current_dt = datetime.now(timezone("Europe/Kyiv"))
+    current_dt = datetime.now(ZoneInfo("Europe/Kyiv"))
 
     for entry in tokens:
         api_token = entry.get("api_token")
@@ -107,7 +102,7 @@ def run_balance_update():
 
 
 def wait_until_5am_kyiv():
-    kyiv = timezone("Europe/Kyiv")
+    kyiv = ZoneInfo("Europe/Kyiv")
     while True:
         now = datetime.now(kyiv)
         next_run = now.replace(hour=5, minute=0, second=0, microsecond=0)

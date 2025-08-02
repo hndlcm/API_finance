@@ -2,9 +2,8 @@ import time
 from datetime import datetime, timedelta
 
 import requests
-
 from config_manager import CURRENCY_CODES, config_manager
-from table import init_google_sheet
+
 from utils import (
     datetime_to_serial_float,
     format_amount,
@@ -126,7 +125,7 @@ def write_privat_transactions_to_sheet(
 
         account = tx.get("AUT_MY_ACC", "")
         account_currency = tx.get("CCY", "UAH")
-        #operation_currency = tx.get("CCY_E", account_currency)
+        # operation_currency = tx.get("CCY_E", account_currency)
 
         new_row[1] = "privatbank"
         new_row[2] = acc_name_map.get(account, "")
@@ -186,7 +185,7 @@ def privat_export():
         print("❌ У конфігурації немає PRIVAT токенів.")
         return
 
-    worksheet = init_google_sheet()
+    # worksheet = init_google_sheet()
     exchange_rates = get_mono_exchange_rates()
 
     for entry in tokens:
