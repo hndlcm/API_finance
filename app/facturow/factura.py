@@ -2,9 +2,8 @@ from datetime import UTC, datetime, timedelta
 
 import gspread
 import requests
-from oauth2client.service_account import ServiceAccountCredentials
-
 from config_manager import config_manager
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 def convert_to_serial_date(date_str):

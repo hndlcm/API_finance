@@ -17,5 +17,4 @@ venv/
 .env.dev
 .env.prod
 
-
-
+app_data/

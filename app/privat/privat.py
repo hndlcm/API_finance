@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 import requests
 from config_manager import CURRENCY_CODES, config_manager
-
 from utils import (
     datetime_to_serial_float,
     format_amount,
@@ -213,6 +212,6 @@ def privat_export():
 
         acc_name_map = {b.get("acc"): b.get("nameACC") for b in balances}
 
-        write_privat_transactions_to_sheet(
-            worksheet, transactions, acc_name_map, exchange_rates
-        )
+        # write_privat_transactions_to_sheet(
+        #     worksheet, transactions, acc_name_map, exchange_rates
+        # )

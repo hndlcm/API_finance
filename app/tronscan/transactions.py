@@ -2,7 +2,6 @@ import time
 from datetime import datetime, timedelta
 
 import requests
-
 from config_manager import config_manager
 from table import init_google_sheet
 

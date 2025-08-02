@@ -2,7 +2,6 @@ import time
 from datetime import datetime, timedelta
 
 import requests
-
 from config_manager import CURRENCY_CODES, config_manager
 from table import init_google_sheet
 from utils import (

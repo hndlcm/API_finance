@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import requests
-
 from config_manager import config_manager
 from table import init_google_sheet
 

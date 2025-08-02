@@ -1,0 +1,56 @@
+{
+    "version": 1,
+	"disable_existing_loggers": true,
+    
+    "formatters": 
+	{
+        "TimeStampFormatter": 
+		{
+            "format": "[%(asctime)s] %(message)s (%(levelname)s) [%(name)s]",
+			"datefmt":"%d.%m.%y %H:%M:%S %z"
+        }
+    },	
+	
+	"handlers": 
+	{		
+        "FileHandler":
+		{
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "formatter": "TimeStampFormatter",
+            "filename": "log.txt",
+			"when": "D",
+			"interval": 1,
+			"backupCount": 7,
+			"level": "DEBUG",
+			"encoding": "UTF-8"
+        },
+
+        "RichHandler":
+        {
+            "class": "rich.logging.RichHandler",
+            "level": "DEBUG",
+            "rich_tracebacks":false,
+            "markup":false,
+            "show_time": true,
+            "show_level": true,
+            "show_path": true,
+            "log_time_format": "%H:%M:%S",
+            "keywords": null
+        }
+    },
+    
+	"loggers": 
+	{
+        "root":
+		{
+            "handlers": [ "FileHandler"],
+            "level": "DEBUG"
+        },
+
+        "app":
+		{
+            "handlers": [ "RichHandler"],
+            "level": "DEBUG"
+        }
+    }
+}

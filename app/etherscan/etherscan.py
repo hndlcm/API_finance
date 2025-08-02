@@ -3,9 +3,8 @@ from datetime import datetime, timedelta
 
 import gspread
 import requests
-from oauth2client.service_account import ServiceAccountCredentials
-
 from config_manager import config_manager
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 def format_amount(value):
