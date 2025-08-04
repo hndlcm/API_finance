@@ -1,26 +1,24 @@
-import time
+"""
+    Документація
+    https://docs.google.com/document/d/e/2PACX-1vTtKvGa3P4E-lDqLg3bHRF6Wi9S7GIjSMFEFxII5qQZBGxuTXs25hQNiUU1hMZQhOyx6BNvIZ1bVKSr/pub
+"""
+
 from datetime import datetime
-from typing import Final
 
 import requests
 
+from ...helpers.sync_rate_limiter import RateLimiter
+from .constants import BALANCE_URL, DEFAULT_LIMIT, DT_FORMAT, TRANSACTIONS_URL
 from .schemas import Balance, BalanceResponse, Transaction, TransactionResponse
-
-BASE_URL: Final[str] = "https://acp.privatbank.ua/api"
-TRANSACTIONS_URL: Final[str] = f"{BASE_URL}/statements/transactions"
-BALANCE_URL: Final[str] = f"{BASE_URL}/statements/balance/final"
-
-DT_FORMAT: Final[str] = "%d-%m-%Y"
-DELAY: Final[float] = 1 / 7
-DEFAULT_LIMIT: Final[int] = 100
 
 
 class PrivatApi:
-    def __init__(self, token: str):
+    def __init__(self, token: str, limiter: RateLimiter):
         self._token = token
         self._s = requests.Session()
         headers = {"User-Agent": "MyApp/1.0", "token": self._token}
         self._s.headers.update(headers)
+        self._limiter = limiter
 
     def fetch_transactions(
         self,
@@ -37,6 +35,7 @@ class PrivatApi:
         if follow_id is not None:
             params["followId"] = follow_id
 
+        self._limiter.wait()
         r = self._s.get(TRANSACTIONS_URL, params=params)
         r.raise_for_status()
         json_content = r.json()
@@ -51,6 +50,7 @@ class PrivatApi:
         if follow_id:
             params["followId"] = follow_id
 
+        self._limiter.wait()
         r = self._s.get(BALANCE_URL, params=params)
         r.raise_for_status()
         json_content = r.json()
@@ -73,7 +73,6 @@ class PrivatApi:
                 return transactions
 
             follow_id = p.next_page_id
-            time.sleep(DELAY)
 
     def fetch_all_balances(self) -> list[Balance]:
         balances = []
@@ -88,4 +87,3 @@ class PrivatApi:
                 return balances
 
             follow_id = p.next_page_id
-            time.sleep(DELAY)

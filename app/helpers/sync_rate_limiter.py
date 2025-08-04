@@ -1,4 +1,5 @@
 import time
+from collections import deque
 
 
 class RateLimiter:
@@ -7,24 +8,21 @@ class RateLimiter:
             raise ValueError("max_calls and period must be greater than 0")
         self._max_calls = max_calls
         self._period = period
-        self._tokens = max_calls
-        self._last_time = time.monotonic()
+        self._calls = deque()
 
     def wait(self):
         now = time.monotonic()
-        elapsed = now - self._last_time
-        self._last_time = now
-        self._tokens += elapsed * (self._max_calls / self._period)
+        while self._calls and self._calls[0] <= now - self._period:
+            self._calls.popleft()
 
-        if self._tokens > self._max_calls:
-            self._tokens = self._max_calls
-
-        if self._tokens < 1:
-            sleep_time = (1 - self._tokens) * (self._period / self._max_calls)
+        if len(self._calls) >= self._max_calls:
+            sleep_time = self._calls[0] + self._period - now
             time.sleep(sleep_time)
-            self._tokens = 0
-        else:
-            self._tokens -= 1
+            now = time.monotonic()
+            while self._calls and self._calls[0] <= now - self._period:
+                self._calls.popleft()
+
+        self._calls.append(time.monotonic())
 
 
 if __name__ == "__main__":

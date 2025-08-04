@@ -14,8 +14,6 @@ dependencies = [
     "db-dtypes>=1.4.3",
     "google-cloud-bigquery>=3.35.1",
     "google-cloud-bigquery-storage>=2.32.0",
-    "pandas>=2.3.1",
-    "pyarrow>=21.0.0",
     "colorlog>=6.9.0",
 ]
 
@@ -65,7 +63,7 @@ select = [
     # isort
     "I",
 ]
-ignore = []
+ignore = ["UP006", "UP035", "UP017"]
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["F401"]

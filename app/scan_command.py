@@ -1,48 +1,52 @@
+import logging
+
+from google.cloud import bigquery
+from google.oauth2 import service_account
+
+from .bigquery_table.table import Table
+from .payment_config import load_config
+from .payments.mono.scanner import MonoScanner
+from .schemas import TransactionRecord
 from .settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+scanners = {
+    # PrivatScanner.KEY: PrivatScanner,
+    MonoScanner.KEY: MonoScanner,
+}
 
 
 def scan_command(settings: Settings):
-    pass
+    payment_config = load_config(settings.payment_config_file)
+    transactions = []
+    for key, items in payment_config.root.items():
+        if items:
+            if ScannerType := scanners.get(key):
+                scanner = ScannerType(items)
+                records: list[TransactionRecord] = scanner.scan()
+                transactions.extend(records)
 
-    # limiter = RateLimiter(max_calls=7, period=1)
-    #
-    # credentials = service_account.Credentials.from_service_account_file(
-    #     str(BIG_QUERY_CRED_FILE)
-    # )
-    # client = bigquery.Client(
-    #     credentials=credentials, project=credentials.project_id
-    # )
-    # logger.debug(credentials.project_id)
-    # table_id = "fin-api-463108.finapi.fin-api-fin"
+    logger.info("Connecting to BigQuery ...")
+    credentials = service_account.Credentials.from_service_account_file(
+        str(settings.big_query_cred_file)
+    )
+    client = bigquery.Client(credentials.project_id, credentials)
 
+    logger.info("Inserting and updating data in table ...")
+    table = Table(
+        table_id=settings.big_query_table_id,
+        pydantic_cls=TransactionRecord,
+        primary_keys=["transaction_id", "bank_or_system"],
+        client=client,
+    )
+    table.upsert_records(transactions)
 
-#    query = f"SELECT * FROM `{table_id}` LIMIT 1000"
+    # data = [t.model_dump() for t in transactions]
+    # with open("app_data/transactions_2.json", "w", encoding="utf-8") as file:
+    #     json.dump(data, file, indent=4, ensure_ascii=False, default=str)
 
-#    df = client.query(query).to_dataframe()
-#    print(df)
-
-# tables = client.list_tables(dataset_id)
-# for table in tables:
-#     logger.debug(f"Table: {table.table_id}")
-#     table_ref = client.get_table(f"{dataset_id}.{table.table_id}")
-#     logger.debug(f"Schema for table {table.table_id}:")
-#     for schema_field in table_ref.schema:
-#         logger.debug(f" - {schema_field.name} ({
-#         schema_field.field_type})")
-
-# payment_config = load_config("app_data/config.json")
-# privat_items = payment_config.root.get("PRIVAT", [])
-# logger.debug(privat_items[0].api_key)
-#
-# token = privat_items[0].api_key
-# api = PrivatApi(token)
-#
-# to_date_dt = datetime.now()
-# from_date_dt = to_date_dt - timedelta(days=65)
-#
-# # r = api.fetch_all_balances()
-# r = api.fetch_all_transactions(from_date_dt, to_date_dt)
-# logger.debug(r)
 
 # while True:
 # try:

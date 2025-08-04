@@ -16,13 +16,11 @@ class LogSettings(BaseModel):
 class Settings(BaseSettings):
     log: LogSettings
     app_tz: TimeZone
-    rate_limit: tuple[float, float]
 
-    big_query_cred_file: Path = Path(
-        "app_data/fin-api-463108-7083ad9de650.json"
-    )
+    big_query_cred_file: Path
+    big_query_table_id: str
 
-    payment_config_file: Path = Path("app_data/config.json")
+    payment_config_file: Path
 
     flags: frozenset[str] = frozenset()
 
