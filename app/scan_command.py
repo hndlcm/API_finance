@@ -22,12 +22,15 @@ scanners = {
 def scan_command(settings: Settings):
     payment_config = load_config(settings.payment_config_file)
     transactions = []
-    for key, items in payment_config.root.items():
-        if items:
-            if ScannerType := scanners.get(key):
+    logger.info("Scanning payment systems ...")
+    for key, ScannerType in scanners.items():
+        if items := payment_config.root.get(key):
+            try:
                 scanner = ScannerType(items)
                 records: list[TransactionRecord] = scanner.scan()
                 transactions.extend(records)
+            except Exception as e:
+                logger.error("%s %s", type(e), e)
 
     logger.info("Connecting to BigQuery ...")
     credentials = service_account.Credentials.from_service_account_file(
@@ -35,7 +38,7 @@ def scan_command(settings: Settings):
     )
     client = bigquery.Client(credentials.project_id, credentials)
 
-    logger.info("Inserting and updating data in table ...")
+    logger.info("Inserting and updating transactions in BigQuery table ...")
     table = Table(
         table_id=settings.big_query_table_id,
         pydantic_cls=TransactionRecord,
