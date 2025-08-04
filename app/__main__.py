@@ -43,7 +43,7 @@ def main():
     )
     subparsers.add_parser(
         str(Commands.IMPORT_TABLE.value),
-        help="Import data from csv into bigquery table",
+        help="Import data from csv to bigquery table",
     )
     subparsers.add_parser(
         str(Commands.EXPORT_TABLE.value),
@@ -51,7 +51,7 @@ def main():
     )
     subparsers.add_parser(
         str(Commands.TEST.value),
-        help="Tesr",
+        help="Test",
     )
     args = parser.parse_args()
     try:

@@ -31,14 +31,3 @@ def export_table_command(settings: Settings):
     with open("app_data/transactions_export.json", "w", encoding="utf-8") as f:
         data = [record.model_dump() for record in records]
         json.dump(data, f, indent=4, ensure_ascii=False, default=str)
-
-    # with open("app_data/transactions_export.csv", "w", encoding="cp1251",
-    #           newline="", errors="ignore") as f:
-    #     writer = csv.DictWriter(
-    #         f,
-    #         fieldnames=TransactionRecord.model_fields.keys(),
-    #         delimiter=';',
-    #     )
-    #     writer.writeheader()
-    #     for record in records:
-    #         writer.writerow(record.model_dump(mode="json"))

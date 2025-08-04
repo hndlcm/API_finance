@@ -6,6 +6,7 @@ from google.oauth2 import service_account
 from .bigquery_table.table import Table
 from .payment_config import load_config
 from .payments.mono.scanner import MonoScanner
+from .payments.privat.scanner import PrivatScanner
 from .schemas import TransactionRecord
 from .settings import Settings
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 scanners = {
-    # PrivatScanner.KEY: PrivatScanner,
+    PrivatScanner.KEY: PrivatScanner,
     MonoScanner.KEY: MonoScanner,
 }
 
@@ -42,10 +43,6 @@ def scan_command(settings: Settings):
         client=client,
     )
     table.upsert_records(transactions)
-
-    # data = [t.model_dump() for t in transactions]
-    # with open("app_data/transactions_2.json", "w", encoding="utf-8") as file:
-    #     json.dump(data, file, indent=4, ensure_ascii=False, default=str)
 
 
 # while True:

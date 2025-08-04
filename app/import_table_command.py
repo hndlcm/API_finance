@@ -32,5 +32,4 @@ def import_table_command(settings: Settings):
             primary_keys=["transaction_id", "bank_or_system"],
             client=client,
         )
-        table.upsert_records(transactions[130:])
-        logger.debug("Imported %d", len(transactions))
+        table.insert_records(transactions)
