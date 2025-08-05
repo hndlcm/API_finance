@@ -79,7 +79,7 @@ def trc20_transfer_to_record(
     )
 
     return TransactionRecord(
-        operation_datetime=transfer.block_ts,  # 0
+        operation_datetime=transfer.block_timestamp,  # 0
         bank_or_system="TRC20",  # 1
         account_name=None,  # 2
         account_number=address,  # 3

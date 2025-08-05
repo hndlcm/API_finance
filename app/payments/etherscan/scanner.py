@@ -5,24 +5,24 @@ from typing import ClassVar
 from ...helpers.sync_rate_limiter import RateLimiter
 from ...payment_config import PaymentItem
 from ...schemas import TransactionRecord
-from .api import FacturowniaApi
-from .schemas import facturownia_invoice_to_record
+from .api import ERC20Api
+from .schemas import erc20_transaction_to_record
 
 logger = logging.getLogger(__name__)
 
 
-class FacturowniaScanner:
-    KEY: ClassVar[str] = "FACTUROWNIA"
+class ERC20Scanner:
+    KEY: ClassVar[str] = "ERC20"
 
     def __init__(self, items: list[PaymentItem]):
         self._items = items
-        self._limiter = RateLimiter(7, 1)
+        self._limiter = RateLimiter(2, 1)
 
     def _work_with_item(self, item: PaymentItem) -> list[TransactionRecord]:
-        api = FacturowniaApi(item.api_key, self._limiter)
+        api = ERC20Api(item.api_key, self._limiter)
 
         to_date = datetime.now(timezone.utc)
-        from_date = to_date - timedelta(days=item.days)
+        from_date = to_date - timedelta(days=365)  # item.days
 
         logger.debug(
             'Scanning "%s"/"%s" between %s and %s',
@@ -32,15 +32,21 @@ class FacturowniaScanner:
             to_date,
         )
 
-        invoices = api.fetch_all_invoices()
+        item.address = "0x19Cf249E7e423b5Bd2d41FD62e7f3adbfdEe5B47"
+
+        transactions = api.fetch_all_transactions(item.address)
+        logger.debug("transactions: %d", len(transactions))
         records = []
-        for invoice in invoices:
-            if from_date <= invoice.updated_at <= to_date:
-                records.append(facturownia_invoice_to_record(invoice))
+        for transaction in transactions:
+            if from_date <= transaction.block_timestamp <= to_date:
+                record = erc20_transaction_to_record(transaction, item.address)
+                records.append(record)
+
         return records
 
     def scan(self) -> list[TransactionRecord]:
         records = []
         for item in self._items:
             records.extend(self._work_with_item(item))
+            break
         return records

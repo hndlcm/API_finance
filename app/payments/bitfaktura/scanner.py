@@ -32,10 +32,11 @@ class BitfakturaScanner:
             to_date,
         )
 
-        invoices = api.fetch_all_invoices(from_date, to_date)
-        records = [
-            bitfaktura_invoice_to_record(invoice) for invoice in invoices
-        ]
+        invoices = api.fetch_all_invoices()
+        records = []
+        for invoice in invoices:
+            if from_date <= invoice.updated_at <= to_date:
+                records.append(bitfaktura_invoice_to_record(invoice))
         return records
 
     def scan(self) -> list[TransactionRecord]:

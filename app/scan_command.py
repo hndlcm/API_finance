@@ -5,7 +5,13 @@ from google.oauth2 import service_account
 
 from .bigquery_table import Table
 from .payment_config import load_config
-from .payments import FacturowniaScanner
+from .payments import (
+    BitfakturaScanner,
+    ERC20Scanner,
+    FacturowniaScanner,
+    PrivatScanner,
+    TRC20Scanner,
+)
 from .schemas import TransactionRecord
 from .settings import Settings
 
@@ -20,17 +26,20 @@ def remove_duplicates(
 
 
 def scan_command(settings: Settings):
-    payment_config = load_config(settings.payment_config_file)
-    transactions = []
-    logger.info("Scanning payment systems ...")
+    logger.info("Loading payment config ...")
 
+    payment_config = load_config(settings.payment_config_file)
+
+    logger.info("Scanning payment systems ...")
     scanner_types = [
-        # PrivatScanner,
+        PrivatScanner,
         # MonoScanner,
         FacturowniaScanner,
-        # BitfakturaScanner,
-        # TRC20Scanner,
+        BitfakturaScanner,
+        ERC20Scanner,
+        TRC20Scanner,
     ]
+    transactions = []
     for ScannerType in scanner_types:
         if items := payment_config.root.get(ScannerType.KEY):
             try:
@@ -38,7 +47,7 @@ def scan_command(settings: Settings):
                 records: list[TransactionRecord] = scanner.scan()
                 transactions.extend(remove_duplicates(records))
             except Exception as e:
-                logger.error("%s %s", type(e), e)
+                logger.error("Error: %s %s", type(e), e)
                 raise e
 
     if not transactions:
@@ -59,27 +68,3 @@ def scan_command(settings: Settings):
         client=client,
     )
     table.upsert_records(transactions)
-
-
-# try:
-#     export_erc20_to_google_sheet()
-# except Exception as e:
-#     print(f"❌ Помилка при експорті ERC20: {e}")
-#
-# try:
-#     export_trc20_transactions_troscan_to_google_sheets()
-# except Exception as e:
-#     print(f"❌ Помилка при експорті TRC20 Tronscan: {e}")
-#
-# try:
-#     print(
-#         "🚀 Запускаємо експорт замовлень Portmone за останні 2 роки..."
-#     )
-#     export_portmone_orders_full()
-#
-#     print("✅ Експорт замовлень Portmone завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті Portmone: {e}\n")
-#
-# print("⏰ Чекаємо 1 годину до наступного запуску...\n")
-# time.sleep(3600)

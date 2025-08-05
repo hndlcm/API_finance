@@ -5,7 +5,6 @@
      Наприклад: https://docs.tronscan.org/api-endpoints/transactions-and-transfers
 """
 
-import datetime
 import logging
 from collections.abc import Iterator
 
@@ -84,20 +83,8 @@ class TRC20Api:
     ) -> Iterator[TokenTransfersPage]:
         return TransfersPageIterator(self, address, start, limit)
 
-    def fetch_all_transfers(
-        self,
-        address: str,
-        from_date: datetime,
-        to_date: datetime,
-    ) -> list[TokenTransfer]:
+    def fetch_all_transfers(self, address: str) -> list[TokenTransfer]:
         transfers = []
-        is_last_page = False
         for page in self.transfer_pages_iter(address):
-            for transfer in page.token_transfers:
-                if from_date <= transfer.block_timestamp <= to_date:
-                    transfers.append(transfer)
-                if transfer.block_timestamp < from_date:
-                    is_last_page = True
-            if is_last_page:
-                break
+            transfers.extend(page.token_transfers)
         return transfers

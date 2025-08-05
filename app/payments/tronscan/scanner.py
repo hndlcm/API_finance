@@ -33,11 +33,19 @@ class TRC20Scanner:
             to_date,
         )
 
-        transfers = api.fetch_all_transfers(item.address, from_date, to_date)
-        records = [
-            trc20_transfer_to_record(transfer, item.address)
-            for transfer in transfers
-        ]
+        records = []
+        is_last_page = False
+        for page in api.transfer_pages_iter(item.address):
+            for transfer in page.token_transfers:
+                if from_date <= transfer.block_timestamp <= to_date:
+                    records.append(
+                        trc20_transfer_to_record(transfer, item.address)
+                    )
+                if transfer.block_timestamp < from_date:
+                    is_last_page = True
+            if is_last_page:
+                break
+
         return records
 
     def scan(self) -> list[TransactionRecord]:
