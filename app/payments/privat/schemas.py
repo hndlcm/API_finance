@@ -52,7 +52,7 @@ class Transaction(BaseModel):
         return value
 
 
-class TransactionResponse(BaseModel):
+class TransactionsPage(BaseModel):
     status: str
     # # type: str | None = None
     exist_next_page: bool
@@ -84,7 +84,7 @@ class Balance(BaseModel):
     # is_final_bal: bool | None = None
 
 
-class BalanceResponse(BaseModel):
+class BalancesPage(BaseModel):
     status: str
     # # type: str | None = None
     exist_next_page: bool

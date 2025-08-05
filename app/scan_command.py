@@ -5,8 +5,7 @@ from google.oauth2 import service_account
 
 from .bigquery_table.table import Table
 from .payment_config import load_config
-from .payments.mono.scanner import MonoScanner
-from .payments.privat.scanner import PrivatScanner
+from .payments.tronscan.scanner import TRC20Scanner
 from .schemas import TransactionRecord
 from .settings import Settings
 
@@ -19,8 +18,9 @@ def scan_command(settings: Settings):
     logger.info("Scanning payment systems ...")
 
     scanner_types = [
-        PrivatScanner,
-        MonoScanner,
+        TRC20Scanner,
+        # PrivatScanner,
+        # MonoScanner,
     ]
     for ScannerType in scanner_types:
         if items := payment_config.root.get(ScannerType.KEY):
@@ -30,6 +30,10 @@ def scan_command(settings: Settings):
                 transactions.extend(records)
             except Exception as e:
                 logger.error("%s %s", type(e), e)
+
+    if not transactions:
+        logger.warning("No transactions.")
+        return
 
     logger.info("Connecting to BigQuery ...")
     credentials = service_account.Credentials.from_service_account_file(
@@ -47,20 +51,6 @@ def scan_command(settings: Settings):
     table.upsert_records(transactions)
 
 
-# while True:
-# try:
-#     print("🚀 Запускаємо експорт privat транзакцій...")
-#     privat_export()
-#     print("✅ privat експорт завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті privat: {e}\n")
-# try:
-#     print("🚀 Запускаємо експорт mono транзакцій...")
-#     export_mono_transactions_to_google_sheets()
-#     print("✅ mono експорт завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті mono: {e}\n")
-#
 # try:
 #     print("🚀 Запускаємо експорт TRC20 транзакцій...")
 #     export_fakturownia_all_to_google_sheets()

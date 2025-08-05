@@ -52,6 +52,12 @@
 		{
             "handlers": [ "ConsoleHandler"],
             "level": "DEBUG"
+        },
+
+        "urllib3":
+		{
+            "handlers": [ "ConsoleHandler"],
+            "level": "DEBUG"
         }
     }
 }

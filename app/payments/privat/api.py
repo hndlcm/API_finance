@@ -16,7 +16,7 @@ from .constants import (
     RETRY_PARAMS,
     TRANSACTIONS_URL,
 )
-from .schemas import Balance, BalanceResponse, Transaction, TransactionResponse
+from .schemas import Balance, BalancesPage, Transaction, TransactionsPage
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ class PrivatApi:
         end_date: datetime,
         follow_id: str | None = None,
         limit: int = DEFAULT_LIMIT,
-    ) -> TransactionResponse:
+    ) -> TransactionsPage:
         params = {
             "startDate": start_date.strftime(DT_FORMAT),
             "endDate": end_date.strftime(DT_FORMAT),
@@ -49,14 +49,14 @@ class PrivatApi:
         r = self._s.get(TRANSACTIONS_URL, params=params)
         r.raise_for_status()
         json_content = r.json()
-        return TransactionResponse.model_validate(json_content)
+        return TransactionsPage.model_validate(json_content)
 
     @retry(logger, **RETRY_PARAMS)
     def fetch_balances(
         self,
         follow_id: str | None = None,
         limit: int = DEFAULT_LIMIT,
-    ) -> BalanceResponse:
+    ) -> BalancesPage:
         params = {"limit": limit}
         if follow_id:
             params["followId"] = follow_id
@@ -65,7 +65,7 @@ class PrivatApi:
         r = self._s.get(BALANCE_URL, params=params)
         r.raise_for_status()
         json_content = r.json()
-        return BalanceResponse.model_validate(json_content)
+        return BalancesPage.model_validate(json_content)
 
     def fetch_all_transactions(
         self,
@@ -75,26 +75,26 @@ class PrivatApi:
         transactions = []
         follow_id = None
         while True:
-            p = self.fetch_transactions(start_date, end_date, follow_id)
-            if p.status != "SUCCESS":
+            page = self.fetch_transactions(start_date, end_date, follow_id)
+            if page.status != "SUCCESS":
                 raise RuntimeError("API balance повернуло помилку!")
 
-            transactions.extend(p.transactions)
-            if not p.exist_next_page:
+            transactions.extend(page.transactions)
+            if not page.exist_next_page:
                 return transactions
 
-            follow_id = p.next_page_id
+            follow_id = page.next_page_id
 
     def fetch_all_balances(self) -> list[Balance]:
         balances = []
         follow_id = None
         while True:
-            p = self.fetch_balances(follow_id)
-            if p.status != "SUCCESS":
+            page = self.fetch_balances(follow_id)
+            if page.status != "SUCCESS":
                 raise RuntimeError("API balance повернуло помилку!")
 
-            balances.extend(p.balances)
-            if not p.exist_next_page:
+            balances.extend(page.balances)
+            if not page.exist_next_page:
                 return balances
 
-            follow_id = p.next_page_id
+            follow_id = page.next_page_id
