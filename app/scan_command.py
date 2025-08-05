@@ -3,9 +3,8 @@ import logging
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-from .bigquery_table.table import Table
+from .bigquery_table import Table
 from .payment_config import load_config
-from .payments.tronscan.scanner import TRC20Scanner
 from .schemas import TransactionRecord
 from .settings import Settings
 
@@ -18,7 +17,7 @@ def scan_command(settings: Settings):
     logger.info("Scanning payment systems ...")
 
     scanner_types = [
-        TRC20Scanner,
+        # TRC20Scanner,
         # PrivatScanner,
         # MonoScanner,
     ]
@@ -51,13 +50,6 @@ def scan_command(settings: Settings):
     table.upsert_records(transactions)
 
 
-# try:
-#     print("🚀 Запускаємо експорт TRC20 транзакцій...")
-#     export_fakturownia_all_to_google_sheets()
-#     print("✅ TRC20 експорт завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті TRC20: {e}\n")
-#
 # try:
 #     print("🚀 Запускаємо експорт інвойсів Bitfactura...")
 #     export_bitfactura_all_to_google_sheets()
