@@ -5,11 +5,18 @@ from google.oauth2 import service_account
 
 from .bigquery_table import Table
 from .payment_config import load_config
-from .payments import BitfakturaScanner
+from .payments import FacturowniaScanner
 from .schemas import TransactionRecord
 from .settings import Settings
 
 logger = logging.getLogger(__name__)
+
+
+def remove_duplicates(
+    records: list[TransactionRecord]
+) -> list[TransactionRecord]:
+    records_map = {record.transaction_id: record for record in records}
+    return list(records_map.values())
 
 
 def scan_command(settings: Settings):
@@ -20,15 +27,16 @@ def scan_command(settings: Settings):
     scanner_types = [
         # PrivatScanner,
         # MonoScanner,
+        FacturowniaScanner,
+        # BitfakturaScanner,
         # TRC20Scanner,
-        BitfakturaScanner,
     ]
     for ScannerType in scanner_types:
         if items := payment_config.root.get(ScannerType.KEY):
             try:
                 scanner = ScannerType(items)
                 records: list[TransactionRecord] = scanner.scan()
-                transactions.extend(records)
+                transactions.extend(remove_duplicates(records))
             except Exception as e:
                 logger.error("%s %s", type(e), e)
                 raise e
@@ -53,13 +61,6 @@ def scan_command(settings: Settings):
     table.upsert_records(transactions)
 
 
-# try:
-#     print("🚀 Запускаємо експорт інвойсів Bitfactura...")
-#     export_bitfactura_all_to_google_sheets()
-#     print("✅ Експорт інвойсів завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті Bitfactura: {e}\n")
-#
 # try:
 #     export_erc20_to_google_sheet()
 # except Exception as e:
