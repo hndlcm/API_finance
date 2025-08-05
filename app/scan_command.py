@@ -5,6 +5,7 @@ from google.oauth2 import service_account
 
 from .bigquery_table import Table
 from .payment_config import load_config
+from .payments import BitfakturaScanner
 from .schemas import TransactionRecord
 from .settings import Settings
 
@@ -17,9 +18,10 @@ def scan_command(settings: Settings):
     logger.info("Scanning payment systems ...")
 
     scanner_types = [
-        # TRC20Scanner,
         # PrivatScanner,
         # MonoScanner,
+        # TRC20Scanner,
+        BitfakturaScanner,
     ]
     for ScannerType in scanner_types:
         if items := payment_config.root.get(ScannerType.KEY):
@@ -29,6 +31,7 @@ def scan_command(settings: Settings):
                 transactions.extend(records)
             except Exception as e:
                 logger.error("%s %s", type(e), e)
+                raise e
 
     if not transactions:
         logger.warning("No transactions.")

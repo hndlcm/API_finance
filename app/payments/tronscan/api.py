@@ -1,6 +1,6 @@
 """
    TODO:
-     Можливо варто вереглянути документацю API може інші запити дозволять
+     Можливо варто переглянути документацю API може інші запити дозволять
      вибирати напряму по діапазону дат.
      Наприклад: https://docs.tronscan.org/api-endpoints/transactions-and-transfers
 """
@@ -40,7 +40,9 @@ class TransfersPageIterator:
         if self._total is not None and self._start >= self._total:
             raise StopIteration()
 
-        page = self._api.get_transfers(self._address, self._start, self._limit)
+        page = self._api.fetch_transfers(
+            self._address, self._start, self._limit
+        )
         self._start += self._limit
         self._total = page.total
         return page
@@ -55,7 +57,7 @@ class TRC20Api:
         self._limiter = limiter
 
     @retry(logger, **RETRY_PARAMS)
-    def get_transfers(
+    def fetch_transfers(
         self,
         address,
         start=0,
@@ -82,7 +84,7 @@ class TRC20Api:
     ) -> Iterator[TokenTransfersPage]:
         return TransfersPageIterator(self, address, start, limit)
 
-    def get_all_transfers(
+    def fetch_all_transfers(
         self,
         address: str,
         from_date: datetime,

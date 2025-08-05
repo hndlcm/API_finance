@@ -33,7 +33,7 @@ class TRC20Scanner:
             to_date,
         )
 
-        transfers = api.get_all_transfers(item.address, from_date, to_date)
+        transfers = api.fetch_all_transfers(item.address, from_date, to_date)
         records = [
             trc20_transfer_to_record(transfer, item.address)
             for transfer in transfers
