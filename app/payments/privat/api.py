@@ -2,14 +2,23 @@
     Документація
     https://docs.google.com/document/d/e/2PACX-1vTtKvGa3P4E-lDqLg3bHRF6Wi9S7GIjSMFEFxII5qQZBGxuTXs25hQNiUU1hMZQhOyx6BNvIZ1bVKSr/pub
 """
-
+import logging
 from datetime import datetime
 
 import requests
 
+from ...helpers.retry_context import retry
 from ...helpers.sync_rate_limiter import RateLimiter
-from .constants import BALANCE_URL, DEFAULT_LIMIT, DT_FORMAT, TRANSACTIONS_URL
+from .constants import (
+    BALANCE_URL,
+    DEFAULT_LIMIT,
+    DT_FORMAT,
+    RETRY_PARAMS,
+    TRANSACTIONS_URL,
+)
 from .schemas import Balance, BalanceResponse, Transaction, TransactionResponse
+
+logger = logging.getLogger(__name__)
 
 
 class PrivatApi:
@@ -20,6 +29,7 @@ class PrivatApi:
         self._s.headers.update(headers)
         self._limiter = limiter
 
+    @retry(logger, **RETRY_PARAMS)
     def fetch_transactions(
         self,
         start_date: datetime,
@@ -41,6 +51,7 @@ class PrivatApi:
         json_content = r.json()
         return TransactionResponse.model_validate(json_content)
 
+    @retry(logger, **RETRY_PARAMS)
     def fetch_balances(
         self,
         follow_id: str | None = None,

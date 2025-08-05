@@ -2,10 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import ClassVar
 
-from requests.exceptions import RequestException
-
 from ...constants import CURRENCY_CODES
-from ...helpers.retry_context import retry
 from ...helpers.sync_rate_limiter import RateLimiter
 from ...payment_config import PaymentItem
 from ...schemas import TransactionRecord
@@ -25,15 +22,6 @@ class MonoScanner:
         # Але простіше робити до 7 запитів отримувати помилку - чекати 60 с
         # і повторювати запити
 
-    @staticmethod
-    @retry(logger, (RequestException,), (0.2, 1, 20, 60))
-    def _fetch_transactions(api, account_id, from_date, to_date):
-        """
-        Сервер часто розриває з'єднання (ConnectionError),
-        тому треба робити повторні спроби
-        """
-        return api.fetch_all_transactions(account_id, from_date, to_date)
-
     def _work_with_item(self, item: PaymentItem) -> list[TransactionRecord]:
         api = MonoApi(item.api_key, self._limiter)
 
@@ -52,8 +40,8 @@ class MonoScanner:
         records = []
 
         for account in client_info.accounts:
-            transactions = self._fetch_transactions(
-                api, account.id, from_date, to_date
+            transactions = api.fetch_all_transactions(
+                account.id, from_date, to_date
             )
             for transaction in transactions:
                 record = mono_transaction_to_record(

@@ -13,18 +13,17 @@ from .settings import Settings
 logger = logging.getLogger(__name__)
 
 
-scanners = {
-    PrivatScanner.KEY: PrivatScanner,
-    MonoScanner.KEY: MonoScanner,
-}
-
-
 def scan_command(settings: Settings):
     payment_config = load_config(settings.payment_config_file)
     transactions = []
     logger.info("Scanning payment systems ...")
-    for key, ScannerType in scanners.items():
-        if items := payment_config.root.get(key):
+
+    scanner_types = [
+        PrivatScanner,
+        MonoScanner,
+    ]
+    for ScannerType in scanner_types:
+        if items := payment_config.root.get(ScannerType.KEY):
             try:
                 scanner = ScannerType(items)
                 records: list[TransactionRecord] = scanner.scan()

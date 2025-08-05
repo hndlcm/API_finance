@@ -1,23 +1,19 @@
 import logging
 import time
 from datetime import datetime
-from typing import Final
 
 import requests
 
+from ...helpers.retry_context import retry
 from ...helpers.sync_rate_limiter import RateLimiter
-from .schemas import ClientInfo, Transaction
-
-BASE_URL: Final[str] = "https://api.monobank.ua"
-
-CLIENT_INFO_URL: Final[str] = f"{BASE_URL}/personal/client-info"
-
-TRANSACTION_URL_FMT: Final[str] = (
-    f"{BASE_URL}" + "/personal/statement/{account_id}/{from_time}/{" "to_time}"
+from .constants import (
+    CLIENT_INFO_URL,
+    LIMIT,
+    MAX_PERIOD_SECONDS,
+    RETRY_PARAMS,
+    TRANSACTION_URL_FMT,
 )
-
-LIMIT: Final[int] = 500
-MAX_PERIOD_SECONDS: Final[int] = 2682000  # 31 діб + 1 година
+from .schemas import ClientInfo, Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +32,7 @@ class MonoApi:
         self._s.headers.update(headers)
         self._limiter = limiter
 
+    @retry(logger, **RETRY_PARAMS)
     def fetch_client_info(self) -> ClientInfo:
         self._limiter.wait()
         r = self._s.get(CLIENT_INFO_URL)
@@ -43,13 +40,13 @@ class MonoApi:
         json_content = r.json()
         return ClientInfo.model_validate(json_content)
 
+    @retry(logger, **RETRY_PARAMS)
     def fetch_transactions(
         self,
         account_id: str,
         from_unix_time: int,
         to_unix_time: int,
     ) -> list[Transaction]:
-        logger.debug("time %d %d", from_unix_time, to_unix_time)
         self._limiter.wait()
         r = self._s.get(
             TRANSACTION_URL_FMT.format(
