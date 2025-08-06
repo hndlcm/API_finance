@@ -28,6 +28,8 @@ dev = [
     "pytest-asyncio>=1.0.0",
     "ruff==0.1.5",
     "types-colorama>=0.4.15.20240311",
+    "types-requests>=2.32.4.20250611",
+    "vulture>=2.14",
 ]
 
 [tool.ruff]

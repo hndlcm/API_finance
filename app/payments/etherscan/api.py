@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import requests
 
@@ -18,7 +19,7 @@ class ERC20Api:
 
     @retry(logger, **RETRY_PARAMS)
     def fetch_transactions(self, address: str, page: int) -> TransactionsPage:
-        params = {
+        params: dict[str, Any] = {
             "module": "account",
             "action": "tokentx",
             "address": address,
@@ -35,7 +36,7 @@ class ERC20Api:
         return TransactionsPage.model_validate(json_content)
 
     def fetch_all_transactions(self, address: str) -> list[Transaction]:
-        transactions = []
+        transactions: list[Transaction] = []
         n = 1
         while True:
             page = self.fetch_transactions(address, n)

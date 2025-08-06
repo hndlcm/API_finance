@@ -50,14 +50,14 @@ class Transaction(BaseModel):
 
 def _from_minor_units(value: int | None) -> None | Decimal:
     """TODO: чи треба брати модуль числа?"""
-    return value and abs(Decimal(value) / 100)
+    return abs(Decimal(value) / 100) if value else None
 
 
 def mono_transaction_to_record(
     client_info: ClientInfo,
     account: Account,
     transaction: Transaction,
-    currency_codes: dict[int, str],
+    currency_codes: dict[int | None, str],
 ) -> TransactionRecord:
     transaction_type = "debit" if (transaction.amount or 0) < 0 else "credit"
 

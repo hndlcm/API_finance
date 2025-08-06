@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from typing import Any
 
 import requests
 
@@ -36,7 +37,7 @@ class PortmoneApi:
         start_date: datetime,
         end_date: datetime,
     ) -> list[Payment]:
-        payload = {
+        payload: dict[str, Any] = {
             "method": "result",
             "params": {
                 "data": {

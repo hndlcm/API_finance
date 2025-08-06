@@ -1,9 +1,11 @@
 """
     Документація
-    https://docs.google.com/document/d/e/2PACX-1vTtKvGa3P4E-lDqLg3bHRF6Wi9S7GIjSMFEFxII5qQZBGxuTXs25hQNiUU1hMZQhOyx6BNvIZ1bVKSr/pub
+    https://docs.google.com/document/d/e/2PACX-1vTtKvGa3P4E
+    -lDqLg3bHRF6Wi9S7GIjSMFEFxII5qQZBGxuTXs25hQNiUU1hMZQhOyx6BNvIZ1bVKSr/pub
 """
 import logging
 from datetime import datetime
+from typing import Any
 
 import requests
 
@@ -46,7 +48,7 @@ class PrivatApi:
             params["followId"] = follow_id
 
         self._limiter.wait()
-        r = self._s.get(TRANSACTIONS_URL, params=params)
+        r = self._s.get(TRANSACTIONS_URL, params=params)  # type: ignore
         r.raise_for_status()
         json_content = r.json()
         return TransactionsPage.model_validate(json_content)
@@ -57,7 +59,7 @@ class PrivatApi:
         follow_id: str | None = None,
         limit: int = DEFAULT_LIMIT,
     ) -> BalancesPage:
-        params = {"limit": limit}
+        params: dict[str, Any] = {"limit": limit}
         if follow_id:
             params["followId"] = follow_id
 

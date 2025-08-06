@@ -16,12 +16,6 @@ class Mode(enum.StrEnum):
     REQUIRED = "REQUIRED"
 
 
-class WriteDisposition(enum.StrEnum):
-    WRITE_TRUNCATE = "WRITE_TRUNCATE"
-    WRITE_APPEND = "WRITE_APPEND"
-    WRITE_EMPTY = "WRITE_EMPTY"
-
-
 PYTHON_TO_BIGQUERY_TYPE_MAP: Final[dict] = {
     str: "STRING",
     int: "INT64",

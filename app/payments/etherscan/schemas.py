@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -8,16 +9,16 @@ from app.schemas import TransactionRecord
 class Transaction(BaseModel):
     block_number: str | None = Field(default=None, alias="blockNumber")
     timestamp: int = Field(alias="timeStamp")
-    hash: str | None = None
-    nonce: str | None = None
-    block_hash: str | None = Field(default=None, alias="blockHash")
+    # hash: str | None = None
+    # nonce: str | None = None
+    # block_hash: str | None = Field(default=None, alias="blockHash")
     from_address: str | None = Field(default=None, alias="from")
-    contract_address: str | None = Field(default=None, alias="contractAddress")
-    to_address: str | None = Field(default=None, alias="to")
+    # contract_address: str | None = Field(default=None, alias="contractAddress")
+    to_address: str = Field(alias="to")
     value: int
     token_name: str | None = Field(default=None, alias="tokenName")
     token_symbol: str | None = Field(default=None, alias="tokenSymbol")
-    token_decimal: str | None = Field(default=None, alias="tokenDecimal")
+    token_decimal: str = Field(alias="tokenDecimal")
     transaction_index: str | None = Field(
         default=None, alias="transactionIndex"
     )
@@ -51,7 +52,9 @@ def erc20_transaction_to_record(
         if transaction.to_address.casefold() == address.casefold()
         else "credit"
     )
-    amount = abs(transaction.value / 10 ** int(transaction.token_decimal))
+    amount = abs(
+        Decimal(transaction.value) / 10 ** int(transaction.token_decimal)
+    )
     address_counterparty = (
         transaction.to_address
         if transaction_type == "credit"

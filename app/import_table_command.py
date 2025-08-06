@@ -1,6 +1,5 @@
 import json
 import logging
-from types import NoneType, UnionType  # noqa
 
 from google.cloud import bigquery
 from google.oauth2 import service_account

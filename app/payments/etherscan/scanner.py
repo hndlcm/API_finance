@@ -32,10 +32,12 @@ class ERC20Scanner:
             to_date,
         )
 
+        assert item.address
         transactions = api.fetch_all_transactions(item.address)
         records = []
         for transaction in transactions:
             if from_date <= transaction.block_timestamp <= to_date:
+                assert item.address
                 record = erc20_transaction_to_record(transaction, item.address)
                 records.append(record)
 

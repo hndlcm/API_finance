@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 import requests
 
@@ -18,7 +19,10 @@ class BitfakturaApi:
 
     @retry(logger, **RETRY_PARAMS)
     def fetch_invoices(self, page: int) -> list[Invoice]:
-        params = {"api_token": self._token, "page": page}
+        params: dict[str, Any] = {
+            "api_token": self._token,
+            "page": page,
+        }
         self._limiter.wait()
         r = self._s.get(INVOICES_URL, params=params)
         r.raise_for_status()
@@ -27,7 +31,7 @@ class BitfakturaApi:
 
     def fetch_all_invoices(self) -> list[Invoice]:
         page = 1
-        all_invoices = []
+        all_invoices: list[Invoice] = []
         while True:
             invoices = self.fetch_invoices(page)
             if not invoices:

@@ -18,7 +18,7 @@ class Payment(BaseModel):
     # attribute5: str | None = None
     commission: Decimal | None = None
     # distribution_payee_id: str | None = None
-    bank_name: str | None = None
+    # bank_name: str | None = None
     # terminal_id: str | None = None
     # merchant_id: str | None = None
     # rrn: str | None = None
@@ -29,12 +29,12 @@ class Payment(BaseModel):
     payee_name: str | None = None
     payee_commission: Decimal | None = None
     # pay_order_date: datetime | None = None
-    pay_order_number: str | None = None
+    # pay_order_number: str | None = None
     pay_order_amount: Decimal | None = None
     shop_bill_id: str = Field(alias="shopBillId")
-    shop_order_number: str | None = Field(
-        default=None, alias="shopOrderNumber"
-    )
+    # shop_order_number: str | None = Field(
+    #    default=None, alias="shopOrderNumber"
+    # )
     bill_amount: Decimal | None = Field(default=None, alias="billAmount")
     error_code: str | None = Field(default=None, alias="errorCode")
     error_message: str | None = Field(default=None, alias="errorMessage")

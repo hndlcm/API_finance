@@ -34,7 +34,9 @@ class PrivatScanner:
         )
 
         balances = api.fetch_all_balances()
-        acc_name_map = {b.acc: b.name_acc for b in balances}
+        acc_name_map: dict[str | None, str] = {
+            b.acc: b.name_acc for b in balances
+        }
         transactions = api.fetch_all_transactions(from_date_dt, to_date_dt)
         records = []
         for transaction in transactions:

@@ -20,6 +20,10 @@ class PortmoneScanner:
         self._limiter = RateLimiter(7, 1)
 
     def _work_with_item(self, item: PaymentItem) -> list[TransactionRecord]:
+        assert item.login, "Portmone login is not set"
+        assert item.password, "Portmone password is not set"
+        assert item.payee_id, "Portmone payee_id is not set"
+
         api = PortmoneApi(
             item.api_key,
             item.login,

@@ -20,6 +20,8 @@ class TRC20Scanner:
         self._limiter = RateLimiter(7, 1)
 
     def _work_with_item(self, item: PaymentItem) -> list[TransactionRecord]:
+        assert item.address, "TRC20 address is not set"
+
         api = TRC20Api(item.api_key, self._limiter)
 
         to_date = datetime.now(timezone.utc)

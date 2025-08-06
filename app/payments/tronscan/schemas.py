@@ -22,10 +22,10 @@ class TokenInfo(BaseModel):
 class TokenTransfer(BaseModel):
     transaction_id: str
     # status: int | None = None
-    block_ts: int | None = None
+    block_ts: int
     from_address: str | None = None
     # from_address_tag: dict | None = None
-    to_address: str | None = None
+    to_address: str
     # to_address_tag: dict | None = None
     # block: int | None = None
     contract_address: str | None = None
@@ -34,7 +34,7 @@ class TokenTransfer(BaseModel):
     # contract_ret: str | None = Field(default=None, alias="contractRet")
     # final_result: str | None = Field(default=None, alias="finalResult")
     # revert: bool | None = None
-    token_info: TokenInfo = Field(default=None, alias="tokenInfo")
+    token_info: TokenInfo = Field(alias="tokenInfo")
 
     # contract_type: str | None = None
     # from_address_is_contract: bool | None = Field(
