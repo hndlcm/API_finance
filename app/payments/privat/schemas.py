@@ -35,7 +35,7 @@ class Transaction(BaseModel):
     # REF: str | None = None
     # REFN: str | None = None
     # TIM_P: str | None = None
-    DATE_TIME_DAT_OD_TIM_P: datetime | None = None
+    DATE_TIME_DAT_OD_TIM_P: datetime
     TRANTYPE: str | None = None
 
     # DLR: str | None = None
@@ -52,7 +52,7 @@ class Transaction(BaseModel):
         return value
 
 
-class TransactionResponse(BaseModel):
+class TransactionsPage(BaseModel):
     status: str
     # # type: str | None = None
     exist_next_page: bool
@@ -84,7 +84,7 @@ class Balance(BaseModel):
     # is_final_bal: bool | None = None
 
 
-class BalanceResponse(BaseModel):
+class BalancesPage(BaseModel):
     status: str
     # # type: str | None = None
     exist_next_page: bool
@@ -94,8 +94,8 @@ class BalanceResponse(BaseModel):
 
 def privat_transaction_to_record(
     transaction: Transaction,
-    acc_name_map: dict[str, str],
-    currency_codes: dict[str, str],
+    acc_name_map: dict[str | None, str],
+    currency_codes: dict[str | None, str],
 ) -> TransactionRecord:
     transaction_type = "debit" if transaction.TRANTYPE == "D" else "credit"
 

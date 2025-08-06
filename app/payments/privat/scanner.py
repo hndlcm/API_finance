@@ -25,7 +25,7 @@ class PrivatScanner:
         to_date_dt = datetime.now(API_ZONE_INFO)
         from_date_dt = to_date_dt - timedelta(days=item.days)
 
-        logger.debug(
+        logger.info(
             'Scanning "%s"/"%s" between %s and %s',
             self.KEY,
             item.name,
@@ -34,7 +34,9 @@ class PrivatScanner:
         )
 
         balances = api.fetch_all_balances()
-        acc_name_map = {b.acc: b.name_acc for b in balances}
+        acc_name_map: dict[str | None, str] = {
+            b.acc: b.name_acc for b in balances
+        }
         transactions = api.fetch_all_transactions(from_date_dt, to_date_dt)
         records = []
         for transaction in transactions:

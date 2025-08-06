@@ -9,6 +9,9 @@ class PaymentItem(BaseModel):
     address: str | None = None
     api_key: str
     days: int
+
+    login: str | None = None
+    password: str | None = None
     payee_id: int | None = None
 
 

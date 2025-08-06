@@ -8,7 +8,7 @@ class RateLimiter:
             raise ValueError("max_calls and period must be greater than 0")
         self._max_calls = max_calls
         self._period = period
-        self._calls = deque()
+        self._calls: deque[int] = deque()
 
     def wait(self):
         now = time.monotonic()

@@ -8,7 +8,7 @@ from typing import TypeAlias
 ExceptionTypes: TypeAlias = (
     type[BaseException] | tuple[type[BaseException], ...]  # type: ignore
 )
-Delays = tuple[float, ...] | tuple[float, ..., Ellipsis]
+Delays = tuple[float, ...]
 
 _logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class SyncAttempt:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, tb):
+    def __exit__(self, exc_type, exc_val, _tb):
         if exc_type is None or not isinstance(exc_val, self._context.on):
             return False
 

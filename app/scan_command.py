@@ -1,36 +1,64 @@
 import logging
 
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-from .bigquery_table.table import Table
+from .bigquery_table import Table
 from .payment_config import load_config
-from .payments.mono.scanner import MonoScanner
-from .payments.privat.scanner import PrivatScanner
+from .payments import (
+    BitfakturaScanner,
+    ERC20Scanner,
+    FacturowniaScanner,
+    MonoScanner,
+    PortmoneScanner,
+    PrivatScanner,
+    TRC20Scanner,
+)
 from .schemas import TransactionRecord
 from .settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
-scanners = {
-    PrivatScanner.KEY: PrivatScanner,
-    MonoScanner.KEY: MonoScanner,
-}
+def remove_duplicates(
+    records: list[TransactionRecord]
+) -> list[TransactionRecord]:
+    records_map = {record.transaction_id: record for record in records}
+    return list(records_map.values())
 
 
-def scan_command(settings: Settings):
+def scan(settings: Settings):
+    logger.info("Loading payment items ...")
     payment_config = load_config(settings.payment_config_file)
-    transactions = []
+
     logger.info("Scanning payment systems ...")
-    for key, ScannerType in scanners.items():
-        if items := payment_config.root.get(key):
+    scanner_types = (
+        PrivatScanner,
+        MonoScanner,
+        FacturowniaScanner,
+        BitfakturaScanner,
+        ERC20Scanner,
+        TRC20Scanner,
+        PortmoneScanner,
+    )
+    transactions = []
+    for ScannerType in scanner_types:
+        if items := payment_config.root.get(ScannerType.KEY):
             try:
                 scanner = ScannerType(items)
-                records: list[TransactionRecord] = scanner.scan()
+                records = remove_duplicates(scanner.scan())
+                logger.info("Selected: %d", len(records))
+                logger.debug("Records %s", [r.transaction_id for r in records])
                 transactions.extend(records)
             except Exception as e:
-                logger.error("%s %s", type(e), e)
+                logger.error("Error: %s %s", type(e), e)
+                raise e
+
+    if not transactions:
+        logger.warning("No transactions.")
+        return
 
     logger.info("Connecting to BigQuery ...")
     credentials = service_account.Credentials.from_service_account_file(
@@ -46,55 +74,17 @@ def scan_command(settings: Settings):
         client=client,
     )
     table.upsert_records(transactions)
+    logger.info("Scanning completed.")
 
 
-# while True:
-# try:
-#     print("🚀 Запускаємо експорт privat транзакцій...")
-#     privat_export()
-#     print("✅ privat експорт завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті privat: {e}\n")
-# try:
-#     print("🚀 Запускаємо експорт mono транзакцій...")
-#     export_mono_transactions_to_google_sheets()
-#     print("✅ mono експорт завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті mono: {e}\n")
-#
-# try:
-#     print("🚀 Запускаємо експорт TRC20 транзакцій...")
-#     export_fakturownia_all_to_google_sheets()
-#     print("✅ TRC20 експорт завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті TRC20: {e}\n")
-#
-# try:
-#     print("🚀 Запускаємо експорт інвойсів Bitfactura...")
-#     export_bitfactura_all_to_google_sheets()
-#     print("✅ Експорт інвойсів завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті Bitfactura: {e}\n")
-#
-# try:
-#     export_erc20_to_google_sheet()
-# except Exception as e:
-#     print(f"❌ Помилка при експорті ERC20: {e}")
-#
-# try:
-#     export_trc20_transactions_troscan_to_google_sheets()
-# except Exception as e:
-#     print(f"❌ Помилка при експорті TRC20 Tronscan: {e}")
-#
-# try:
-#     print(
-#         "🚀 Запускаємо експорт замовлень Portmone за останні 2 роки..."
-#     )
-#     export_portmone_orders_full()
-#
-#     print("✅ Експорт замовлень Portmone завершено.\n")
-# except Exception as e:
-#     print(f"❌ Помилка при експорті Portmone: {e}\n")
-#
-# print("⏰ Чекаємо 1 годину до наступного запуску...\n")
-# time.sleep(3600)
+def scan_once_command(settings: Settings):
+    scan(settings)
+
+
+def scan_command(settings: Settings):
+    scheduler = BlockingScheduler(timezone=settings.app_tz)
+    trigger = CronTrigger.from_crontab(
+        settings.scheduler, timezone=settings.app_tz
+    )
+    scheduler.add_job(scan, trigger, args=(settings,), misfire_grace_time=60)
+    scheduler.start()

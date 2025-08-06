@@ -1,7 +1,6 @@
 import itertools
 import logging
-from types import NoneType, UnionType  # noqa
-from typing import Final, Iterable, Type
+from typing import Final, Iterable, Sequence, Type
 
 from google.cloud import bigquery
 from google.cloud.bigquery import ScalarQueryParameter
@@ -69,7 +68,7 @@ class Table:
         query_job = self._client.query(query, job_config=job_config)
         query_job.result()
 
-    def insert_records(self, records: list[BaseModel]) -> None:
+    def insert_records(self, records: Sequence[BaseModel]) -> None:
         i = 0
         for batch in itertools.batched(records, BATCH_SIZE):  # type: ignore
             self._insert_records_to_table(self._table_id, batch)
@@ -79,7 +78,7 @@ class Table:
     def _create_temp_table(
         self,
         temp_table_id: str,
-        records: list[BaseModel],
+        records: Sequence[BaseModel],
     ) -> bigquery.Table:
         table = bigquery.Table(
             temp_table_id,  # type: ignore
@@ -93,7 +92,7 @@ class Table:
             i += len(batch)
         return table
 
-    def upsert_records(self, records: list[BaseModel]) -> None:
+    def upsert_records(self, records: Sequence[BaseModel]) -> None:
         temp_table_id = f"{self._table_id}_temp"
         self._client.delete_table(temp_table_id, not_found_ok=True)
         self._create_temp_table(temp_table_id, records)
