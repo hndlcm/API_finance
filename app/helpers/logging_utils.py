@@ -1,6 +1,5 @@
 import json
 import logging
-import sys
 from datetime import datetime, tzinfo
 from logging.config import dictConfig
 from pathlib import Path
@@ -19,7 +18,7 @@ def init_logging(
         file_handler["filename"] = str(folder / file_name)
         dictConfig(config_data)
 
-    if tz and sys.platform.startswith("win"):
+    if tz:  # and sys.platform.startswith("win"):
         logging.Formatter.converter = lambda *args: datetime.now(
             tz
         ).timetuple()

@@ -2,7 +2,7 @@
 
 set -e
 
-SERVICE_FILE="api_finance2.service"
+SERVICE_FILE="api_finance.service"
 
 if [ ! -f "$SERVICE_FILE" ]; then
     echo "Service file '$SERVICE_FILE' not found!"
