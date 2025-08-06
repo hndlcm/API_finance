@@ -90,11 +90,12 @@ def build_insert_query(
     column_names: list[str],
     placeholders: list[str],
 ):
+    placeholders_sql = ",\n".join(placeholders)
     query = (
         f"INSERT INTO {wrap_name(table_id)}\n"
         f"({', '.join(wrap_name(c) for c in column_names)})\n"
         f"VALUES\n"
-        f"{',\n'.join(placeholders)}"
+        f"{placeholders_sql}"
     )
     return query
 

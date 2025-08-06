@@ -1,12 +1,20 @@
 import logging
 
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
 from .bigquery_table import Table
 from .payment_config import load_config
 from .payments import (
+    BitfakturaScanner,
+    ERC20Scanner,
+    FacturowniaScanner,
+    MonoScanner,
     PortmoneScanner,
+    PrivatScanner,
+    TRC20Scanner,
 )
 from .schemas import TransactionRecord
 from .settings import Settings
@@ -21,28 +29,29 @@ def remove_duplicates(
     return list(records_map.values())
 
 
-def scan_command(settings: Settings):
-    logger.info("Loading payment config ...")
-
+def scan(settings: Settings):
+    logger.info("Loading payment items ...")
     payment_config = load_config(settings.payment_config_file)
 
     logger.info("Scanning payment systems ...")
-    scanner_types = [
+    scanner_types = (
+        PrivatScanner,
+        MonoScanner,
+        FacturowniaScanner,
+        BitfakturaScanner,
+        ERC20Scanner,
+        TRC20Scanner,
         PortmoneScanner,
-        # PrivatScanner,
-        # MonoScanner,
-        # FacturowniaScanner,
-        # BitfakturaScanner,
-        # ERC20Scanner,
-        # TRC20Scanner,
-    ]
+    )
     transactions = []
     for ScannerType in scanner_types:
         if items := payment_config.root.get(ScannerType.KEY):
             try:
                 scanner = ScannerType(items)
-                records: list[TransactionRecord] = scanner.scan()
-                transactions.extend(remove_duplicates(records))
+                records = remove_duplicates(scanner.scan())
+                logger.info("Selected: %d", len(records))
+                logger.debug("Records %s", [r.transaction_id for r in records])
+                transactions.extend(records)
             except Exception as e:
                 logger.error("Error: %s %s", type(e), e)
                 raise e
@@ -65,3 +74,15 @@ def scan_command(settings: Settings):
         client=client,
     )
     table.upsert_records(transactions)
+    logger.info("Scanning completed.")
+
+
+def scan_once_command(settings: Settings):
+    scan(settings)
+
+
+def scan_command(settings: Settings):
+    scheduler = BlockingScheduler()
+    trigger = CronTrigger.from_crontab(settings.scheduler)
+    scheduler.add_job(scan, trigger, args=(settings,), misfire_grace_time=60)
+    scheduler.start()

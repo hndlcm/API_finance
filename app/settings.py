@@ -22,6 +22,6 @@ class Settings(BaseSettings):
 
     payment_config_file: Path
 
-    flags: frozenset[str] = frozenset()
+    scheduler: str
 
     # model_config = SettingsConfigDict(extra='allow')

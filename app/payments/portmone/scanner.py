@@ -30,6 +30,14 @@ class PortmoneScanner:
         to_date = datetime.now(API_ZONE_INFO)
         from_date = to_date - timedelta(days=item.days)
 
+        logger.info(
+            'Scanning "%s"/"%s" between %s and %s',
+            self.KEY,
+            item.name,
+            from_date,
+            to_date,
+        )
+
         payments = api.fetch_all_payments(from_date, to_date)
         records = [portmone_payment_to_record(p) for p in payments]
         return records

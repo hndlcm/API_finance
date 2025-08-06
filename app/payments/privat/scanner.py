@@ -25,7 +25,7 @@ class PrivatScanner:
         to_date_dt = datetime.now(API_ZONE_INFO)
         from_date_dt = to_date_dt - timedelta(days=item.days)
 
-        logger.debug(
+        logger.info(
             'Scanning "%s"/"%s" between %s and %s',
             self.KEY,
             item.name,

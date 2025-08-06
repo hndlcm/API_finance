@@ -25,7 +25,7 @@ class TRC20Scanner:
         to_date = datetime.now(timezone.utc)
         from_date = to_date - timedelta(days=item.days)
 
-        logger.debug(
+        logger.info(
             'Scanning "%s"/"%s" between %s and %s',
             self.KEY,
             item.name,

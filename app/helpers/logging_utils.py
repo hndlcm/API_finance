@@ -17,7 +17,6 @@ def init_logging(
         config_data = json.load(file)
         file_handler = config_data["handlers"]["FileHandler"]
         file_handler["filename"] = str(folder / filename)
-
         dictConfig(config_data)
 
     if tz:

@@ -22,9 +22,9 @@ class ERC20Scanner:
         api = ERC20Api(item.api_key, self._limiter)
 
         to_date = datetime.now(timezone.utc)
-        from_date = to_date - timedelta(days=365)  # item.days
+        from_date = to_date - timedelta(days=item.days)
 
-        logger.debug(
+        logger.info(
             'Scanning "%s"/"%s" between %s and %s',
             self.KEY,
             item.name,
@@ -32,10 +32,7 @@ class ERC20Scanner:
             to_date,
         )
 
-        item.address = "0x19Cf249E7e423b5Bd2d41FD62e7f3adbfdEe5B47"
-
         transactions = api.fetch_all_transactions(item.address)
-        logger.debug("transactions: %d", len(transactions))
         records = []
         for transaction in transactions:
             if from_date <= transaction.block_timestamp <= to_date:
