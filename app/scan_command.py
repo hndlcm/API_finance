@@ -82,7 +82,9 @@ def scan_once_command(settings: Settings):
 
 
 def scan_command(settings: Settings):
-    scheduler = BlockingScheduler()
-    trigger = CronTrigger.from_crontab(settings.scheduler)
+    scheduler = BlockingScheduler(timezone=settings.app_tz)
+    trigger = CronTrigger.from_crontab(
+        settings.scheduler, timezone=settings.app_tz
+    )
     scheduler.add_job(scan, trigger, args=(settings,), misfire_grace_time=60)
     scheduler.start()

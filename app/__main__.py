@@ -68,10 +68,10 @@ def main():
         return 1
 
     init_logging(
-        settings.log.directory,
-        settings.log.config,
-        settings.app_tz,
-        filename=args.command + ".txt" if args.command else "log.txt",
+        folder=settings.log.directory,
+        file_name=args.command + ".txt" if args.command else "log.txt",
+        config=settings.log.config,
+        tz=settings.app_tz,
     )
     logger.info("Command=%s Settings=%s", args.command, settings)
     try:
