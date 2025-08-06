@@ -17,7 +17,7 @@ from .settings import Settings
 logger = logging.getLogger(Path(__file__).parent.name)
 
 
-class Commands(enum.StrEnum):
+class Command(enum.StrEnum):
     SCAN = enum.auto()
     SCAN_ONCE = enum.auto()
     RECREATE_TABLE = enum.auto()
@@ -36,22 +36,23 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser(
-        str(Commands.SCAN.value), help="Scan finance on schedule"
+        str(Command.SCAN.value),
+        help="Scan finance on schedule",
     )
     subparsers.add_parser(
-        str(Commands.SCAN_ONCE.value),
+        str(Command.SCAN_ONCE.value),
         help="Scan finance once",
     )
     subparsers.add_parser(
-        str(Commands.RECREATE_TABLE.value),
+        str(Command.RECREATE_TABLE.value),
         help="Recreate bigquery table",
     )
     subparsers.add_parser(
-        str(Commands.IMPORT_TABLE.value),
+        str(Command.IMPORT_TABLE.value),
         help="Import data from csv to bigquery table",
     )
     subparsers.add_parser(
-        str(Commands.EXPORT_TABLE.value),
+        str(Command.EXPORT_TABLE.value),
         help="Export data from bigquery table to csv",
     )
 
@@ -76,15 +77,15 @@ def main():
     logger.info("Command=%s Settings=%s", args.command, settings)
     try:
         match args.command:
-            case Commands.SCAN_ONCE:
+            case Command.SCAN_ONCE:
                 scan_once_command(settings)
-            case Commands.SCAN:
+            case Command.SCAN:
                 scan_command(settings)
-            case Commands.RECREATE_TABLE:
+            case Command.RECREATE_TABLE:
                 recreate_table_command(settings)
-            case Commands.IMPORT_TABLE:
+            case Command.IMPORT_TABLE:
                 import_table_command(settings)
-            case Commands.EXPORT_TABLE:
+            case Command.EXPORT_TABLE:
                 export_table_command(settings)
         return 0
     except KeyboardInterrupt:
