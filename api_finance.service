@@ -1,0 +1,13 @@
+[Unit]
+Description=Api_finance
+After=network.target
+
+[Service]
+Type=simple
+User=vitmur
+WorkingDirectory=/home/vitmur/API_finance
+ExecStart=/bin/bash /home/vitmur/API_finance/run_api_finance_scan.bash
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
