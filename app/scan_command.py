@@ -31,7 +31,11 @@ def remove_duplicates(
 
 def scan(settings: Settings):
     logger.info("Loading payment items ...")
-    payment_config = load_config(settings.payment_config_file)
+    try:
+        payment_config = load_config(settings.payment_config_file)
+    except Exception as e:
+        logger.error('Failed: %s "%s"', type(e), e)
+        return
 
     logger.info("Scanning payment systems ...")
     scanner_types = (
