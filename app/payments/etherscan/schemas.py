@@ -3,25 +3,27 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.schemas import TransactionRecord
+from ...schemas import TransactionRecord
 
 
 class Transaction(BaseModel):
     block_number: str | None = Field(default=None, alias="blockNumber")
     timestamp: int = Field(alias="timeStamp")
-    # hash: str | None = None
+    hash: str
     # nonce: str | None = None
     # block_hash: str | None = Field(default=None, alias="blockHash")
     from_address: str | None = Field(default=None, alias="from")
-    # contract_address: str | None = Field(default=None, alias="contractAddress")
+    # contract_address: str | None = Field(
+    # default=None, alias="contractAddress"
+    # )
     to_address: str = Field(alias="to")
     value: int
     token_name: str | None = Field(default=None, alias="tokenName")
     token_symbol: str | None = Field(default=None, alias="tokenSymbol")
     token_decimal: str = Field(alias="tokenDecimal")
-    transaction_index: str | None = Field(
-        default=None, alias="transactionIndex"
-    )
+    # transaction_index: str | None = Field(
+    #     default=None, alias="transactionIndex"
+    # )
     gas: str | None = None
     gas_price: str | None = Field(default=None, alias="gasPrice")
     gas_used: str | None = Field(default=None, alias="gasUsed")
@@ -78,5 +80,5 @@ def erc20_transaction_to_record(
         counterparty_account_number=address_counterparty,  # 13
         mcc=None,  # 14
         comment=None,  # 15
-        transaction_id=transaction.transaction_index,  # 16
+        transaction_id=transaction.hash,  # 16
     )
