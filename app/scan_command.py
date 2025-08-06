@@ -6,11 +6,7 @@ from google.oauth2 import service_account
 from .bigquery_table import Table
 from .payment_config import load_config
 from .payments import (
-    BitfakturaScanner,
-    ERC20Scanner,
-    FacturowniaScanner,
-    PrivatScanner,
-    TRC20Scanner,
+    PortmoneScanner,
 )
 from .schemas import TransactionRecord
 from .settings import Settings
@@ -32,12 +28,13 @@ def scan_command(settings: Settings):
 
     logger.info("Scanning payment systems ...")
     scanner_types = [
-        PrivatScanner,
+        PortmoneScanner,
+        # PrivatScanner,
         # MonoScanner,
-        FacturowniaScanner,
-        BitfakturaScanner,
-        ERC20Scanner,
-        TRC20Scanner,
+        # FacturowniaScanner,
+        # BitfakturaScanner,
+        # ERC20Scanner,
+        # TRC20Scanner,
     ]
     transactions = []
     for ScannerType in scanner_types:
