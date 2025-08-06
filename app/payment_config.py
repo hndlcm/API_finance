@@ -5,7 +5,7 @@ from pydantic import BaseModel, RootModel
 
 
 class PaymentItem(BaseModel):
-    name: str | None = None
+    name: str = ""
     address: str | None = None
     api_key: str
     days: int

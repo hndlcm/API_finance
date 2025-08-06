@@ -47,5 +47,4 @@ class ERC20Scanner:
         records = []
         for item in self._items:
             records.extend(self._work_with_item(item))
-            break
         return records
